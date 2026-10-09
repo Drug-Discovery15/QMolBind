@@ -105,3 +105,8 @@ Lockfile: `requirements-lock.txt` (pip freeze of `.venv`).
 - The Docker CLI is installed on the build machine but the Docker Desktop daemon was not running; starting a GUI daemon was not done without being asked, so the Dockerfile has NOT been built or verified (it follows environment.yml: conda-forge Python 3.11 + pip for the rest). The tested environment is the Windows pip venv. In a container without a GPU the oracle falls back to the CPU platform (D12).
 - `requirements-lock.txt` is a `pip freeze` of the tested `.venv` (Windows, Python 3.12, CPU torch).
 - Smoke runtime measured on the build machine (RTX 5070 Ti, 24 cores): see `results/smoke_run.log` ("real" line).
+
+## D21. "pilot" experiment (what the generated REPORT can and cannot say)
+- The brief asks for >= 10 seeds and B = 20,000. At ~150-250 oracle evals/s with 15 methods x 3 targets that is days of wall-clock on one machine, so the executed configs are `smoke` (B=500, 2 seeds; pipeline proof only) and `pilot` (B=2000, 6 seeds, 3 targets, 3-trial tuning for the E1 methods). `full` (B=20000, 10 seeds) is defined and runnable (`EXP=full`) but was not executed here.
+- With 6 seeds the bootstrap CIs are wide and the pre-registered criterion has little power; a NO DEMONSTRATED ADVANTAGE verdict at pilot scale means "not shown at this scale", not "shown to be absent".
+- Tuning: E1 methods get 3 trials (1 tuning seed) per target; ablation variants (E2/E3/E5) reuse the lr tuned for `ppo_vqc` on that target so they differ from it in one factor only.

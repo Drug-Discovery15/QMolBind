@@ -32,6 +32,7 @@ E2 = ["ppo_vqc", "ppo_vqc_noent"]
 E3 = ["ppo_vqc", "ppo_vqc_angle", "ppo_vqc_ryrz", "ppo_vqc_cz"]
 E5 = ["ppo_vqc", "ppo_vqc_shots4096", "ppo_vqc_shots1024", "ppo_vqc_shots256"]
 POOL = list(dict.fromkeys([*E1, *E2, *E3, *E5]))
+ABLATION_VARIANTS = {m for m in POOL if m not in E1}  # tuned lr of ppo_vqc is reused for these (documented in DECISIONS D21)
 
 
 def registry() -> dict:
@@ -118,7 +119,14 @@ def main() -> None:
         print(f"== target {tid}: K={problem.target.ligand.K}, oracle platform={problem.oracle.platform_name}, B={B}", flush=True)
         for m in methods:
             hp = default_hparams(m)
-            if a.tune:
+            if a.tune and m in ABLATION_VARIANTS:
+                # ablations (E2/E3/E5) run with the lr tuned for ppo_vqc on the same target, so that they differ from it in ONE factor
+                key = f"{tid}/ppo_vqc"
+                if key not in tuning:
+                    tuning[key] = tune("ppo_vqc", problem, B, exp.get("tune_seeds", [1000]), reg, actor_cfg)
+                    tuning_path.write_text(json.dumps(tuning, indent=2))
+                hp = tuning[key]["hparams"]
+            elif a.tune:
                 key = f"{tid}/{m}"
                 if key not in tuning:
                     tuning[key] = tune(m, problem, B, exp.get("tune_seeds", [1000]), reg, actor_cfg)

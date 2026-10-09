@@ -1,0 +1,14 @@
+name: pilot
+budget: 2000         # B, total oracle calls per run (reduced from the full 20,000 for wall-clock; see DECISIONS D21)
+seeds: [0, 1, 2, 3, 4, 5]
+targets: [3ert, 1uyd, 1eve]
+tune_seeds: [1000]
+al:
+  rounds: 3
+  M: 32
+  b: 6
+  beta: 1.0
+  md_ps: 20.0
+  ensemble: 5
+  max_l1_score: 10000000.0
+  min_sep_deg: 15.0

@@ -214,8 +214,7 @@ def build_report(exp: str) -> tuple[str, dict]:
     else:
         A(md_table(e4[["init", "n_qubits", "n_layers", "n_inits", "n_params", "var_mean_over_params", "var_median_over_params", "var_first_layer_q0"]]) + "\n")
         A("_Cost = mean over real environment states of <Z_0>; variance over >= 200 random inits. Entries of order 1e-34 (e.g. the first-layer qubit-0 parameter "
-          "when L = 1) are exact structural zeros - that parameter does not influence the measured observable in that circuit - not a barren plateau._
-")
+          "when L = 1) are exact structural zeros - that parameter does not influence the measured observable in that circuit - not a barren plateau._\n")
         plots.plot_barren(e4, FIG / f"E4_{exp}.png")
         A(f"![E4]({(FIG / f'E4_{exp}.png').relative_to(ROOT).as_posix()})\n")
 
@@ -284,6 +283,9 @@ def build_report(exp: str) -> tuple[str, dict]:
             A(f"![calibration {d.name}]({(d / 'calibration.png').relative_to(ROOT).as_posix()})\n")
 
     # ---------------------------------------------------------------- hw / affinity
+    A("## Ligand parametrisation (generated force field, D11)\n")
+    pr = _read(RES / "parametrization_report.csv")
+    A("_not run_\n" if pr is None else md_table(pr) + f"\n\nFailure rate: {100 * (1 - pr.ok.mean()):.0f}% ({int((~pr.ok).sum())}/{len(pr)}).\n")
     A("## Fast-oracle benchmark (measured by scripts/benchmark_oracle.py)\n")
     A(bench_markdown() + "\n")
     A("## Hardware feasibility: two-qubit gates after transpiling to a Heron-like device (cz/rz/sx/x, heavy-hex)\n")
