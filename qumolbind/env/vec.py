@@ -36,7 +36,7 @@ class SyncVecEnv:
 
     @property
     def oracle_calls(self) -> int:
-        return int(sum(e.oracle.calls for e in self.envs))
+        return int(sum(e.n_oracle for e in self.envs))
 
     def clip_rate(self) -> float:
         steps = sum(e.n_steps for e in self.envs)
@@ -67,7 +67,7 @@ def _worker(conn, env_fn, seed: int) -> None:  # pragma: no cover - exercised vi
                 o, _ = env.reset()
             conn.send((o, r, te, tr, info))
         elif cmd == "meta":
-            conn.send((env.action_space, env.observation_space, env.oracle.calls, env.n_steps, env.n_clipped))
+            conn.send((env.action_space, env.observation_space, env.n_oracle, env.n_steps, env.n_clipped))
         elif cmd == "close":
             conn.close()
             break

@@ -4,6 +4,7 @@ Usage: python scripts/tasks.py <env|data|test|smoke|baselines|train-q|experiment
 """
 from __future__ import annotations
 
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -43,15 +44,15 @@ def t_test() -> None:
 
 
 def t_baselines() -> None:
-    script("run_experiments.py", "--only", "baselines", "--experiment", "full")
+    script("run_experiments.py", "--only", "baselines", "--experiment", os.environ.get("EXP", "full"))
 
 
 def t_train_q() -> None:
-    script("train.py", "experiment=full")
+    script("train.py", f"experiment={os.environ.get('EXP', 'full')}")
 
 
 def t_experiments() -> None:
-    script("run_experiments.py", "--experiment", "smoke")
+    script("run_experiments.py", "--experiment", os.environ.get("EXP", "smoke"))
 
 
 def t_report() -> None:

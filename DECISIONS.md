@@ -61,3 +61,11 @@ Lockfile: `requirements-lock.txt` (pip freeze of `.venv`).
 - Clash energies reach 1e9 kJ/mol; reward = -(e_t - e_{t-1}) with e = symlog(score/100 kJ/mol) (monotone, so optima are unchanged), clipped to +-10; the clip rate is logged. `energy_transform: linear` gives the prompt's literal -(dE)/scale.
 - State: fixed layout with K_max=8 torsion slots (sin 8, cos 8) so the layout is target independent (needed for transfer E8).
 - Reset evaluates the oracle once (counted in the budget).
+
+## D14. Baseline protocol
+- All methods run through one `Tracker` that hard-caps TOTAL oracle calls at B (env resets count) and records best-energy-so-far; success = RMSD of the best-energy pose < 2 A.
+- PPO: CleanRL-style, own implementation; reward normalised by running std of discounted returns; time-limit truncations bootstrapped; n_envs=4 x 20 steps per update.
+- Equal tuning effort = 3 trials per method on separate tuning seeds (`--tune`): PPO methods sweep actor lr {3e-3,1e-2,3e-2}; hill-climb step {10,20,40} deg; CMA-ES sigma0 {10,20,40} deg; random search has no hyper-parameter (3 trial seeds). Smoke runs skip tuning and use the middle value.
+- CMA-ES (sigma0=40) was initially worse than random search on 3ERT: the clash landscape is rugged at the 40 deg scale (energies up to 1e11), step size diverged. Implementation validated on a smooth periodic objective (tests/baselines); grid was moved to smaller sigma. This is a property of the landscape, not tuned away.
+- `ppo_mlp_matched`: exact matching to a 32-parameter VQC is infeasible with the raw 256-d input (a width-1 hidden layer already has 263 parameters); the closest feasible network is used and both counts are reported. Against VQC variant (ii) (trainable 256->256 projection, 65,792 params) matching is exact to <1%.
+- 1CIL has only 3 small torsions with a fixed root: every random start already has RMSD ~1.3 A, so "success" is uninformative there. Reported alongside the random-start success rate; 3ERT and 1UYD (8 torsions) are the informative targets.

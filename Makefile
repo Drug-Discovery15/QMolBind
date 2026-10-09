@@ -1,3 +1,4 @@
+# EXP=smoke|full selects the experiment config for baselines/train-q/experiments (baselines, train-q default: full)
 PY ?= python
 T = $(PY) scripts/tasks.py
 

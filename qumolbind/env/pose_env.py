@@ -54,6 +54,7 @@ class PoseEnv(gym.Env):
         self.best_coords = self.coords.copy()
         self.last_terms: EnergyTerms | None = None
         self._calls0 = 0
+        self.n_oracle = 0  # this env's own cumulative oracle calls (the oracle may be shared / wrapped)
 
     # ------------------------------------------------------------------
     def _transform(self, score: float) -> float:
@@ -68,6 +69,7 @@ class PoseEnv(gym.Env):
 
     def _score(self, coords: np.ndarray) -> EnergyTerms:
         et = self.oracle.evaluate(coords)
+        self.n_oracle += 1
         if et.score < self.best_score:
             self.best_score, self.best_coords = et.score, coords.copy()
         return et
@@ -78,7 +80,7 @@ class PoseEnv(gym.Env):
             "energy": self.last_terms.score,
             "e_int": self.last_terms.e_int,
             "rmsd_native": self.target.rmsd(self.coords),
-            "oracle_calls": self.oracle.calls - self._calls0,  # per-episode; global total = oracle.calls
+            "oracle_calls": self.n_oracle - self._calls0,  # per-episode; global total = oracle.calls
             "best_energy": self.best_score,
             "best_rmsd_native": self.target.rmsd(self.best_coords),
         }
@@ -90,7 +92,7 @@ class PoseEnv(gym.Env):
         super().reset(seed=seed)
         self.coords = self.lm.randomize(self.np_random)
         self.t = 0
-        self._calls0 = self.oracle.calls
+        self._calls0 = self.n_oracle
         self.best_score = np.inf
         self.last_terms = self._score(self.coords)
         self._e = self._transform(self.last_terms.score)
@@ -116,16 +118,21 @@ class PoseEnv(gym.Env):
         return self.n_clipped / max(self.n_steps, 1)
 
 
-def make_env(target_id: str, env_cfg: dict | None = None, oracle_kw: dict | None = None, max_torsions: int = 8) -> PoseEnv:
+def make_env(
+    target_id: str, env_cfg: dict | None = None, oracle_kw: dict | None = None, max_torsions: int = 8,
+    target=None, oracle=None, wrap_oracle=None,
+) -> PoseEnv:
     from qumolbind.sim.target import load_target
 
     cfg = dict(env_cfg or {})
-    target = load_target(target_id, max_torsions)
+    target = target or load_target(target_id, max_torsions)
     okw = {
         "platform": cfg.get("oracle_platform", "auto"), "precision": cfg.get("oracle_precision", "mixed"),
         "include_strain": cfg.get("include_strain", True), "minimize_iters": cfg.get("fast_minimize_steps", 0),
     }
     okw.update(oracle_kw or {})
-    oracle = target.make_oracle(**okw)
+    oracle = oracle or target.make_oracle(**okw)
+    if wrap_oracle is not None:
+        oracle = wrap_oracle(oracle)
     allowed = {"max_delta_deg", "episode_len", "state_dim", "reward_clip", "reward_scale", "energy_scale", "energy_transform"}
     return PoseEnv(target, oracle, **{k: v for k, v in cfg.items() if k in allowed})
