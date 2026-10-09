@@ -1,5 +1,14 @@
 name: smoke
 budget: 500          # B, total oracle calls
 seeds: [0, 1]
-targets: [1cil]
-al_rounds: 2
+targets: [1eve]
+tune_seeds: [1000]
+al:
+  rounds: 2
+  M: 12              # candidates per round
+  b: 3               # Level-2 evaluations per round (cap 50)
+  beta: 1.0
+  md_ps: 2.0         # smoke MD length (full: 100)
+  ensemble: 5
+  max_l1_score: 10000000.0
+  min_sep_deg: 15.0

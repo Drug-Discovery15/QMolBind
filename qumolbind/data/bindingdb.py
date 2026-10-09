@@ -15,14 +15,20 @@ TYPE_PRIORITY = {"Kd": 0, "Ki": 1, "IC50": 2}  # prefer direct binding constants
 RDLogger.DisableLog("rdApp.*")
 
 
-def fetch_raw(uniprot: str, cutoff_nm: float = 100000, timeout: float = 180) -> list[dict]:
-    r = requests.get(
-        BINDINGDB_URL,
-        params={"uniprot": uniprot, "cutoff": cutoff_nm, "response": "application/json"},
-        timeout=timeout,
-    )
-    r.raise_for_status()
-    return r.json()["getLindsByUniprotsResponse"]["affinities"]
+def fetch_raw(uniprot: str, cutoff_nm: float = 100000, timeout: float = 180, retries: int = 4) -> list[dict]:
+    """GET with exponential backoff (the public endpoint returns transient 503s)."""
+    import time
+
+    last: Exception | None = None
+    for k in range(retries):
+        try:
+            r = requests.get(BINDINGDB_URL, params={"uniprot": uniprot, "cutoff": cutoff_nm, "response": "application/json"}, timeout=timeout)
+            r.raise_for_status()
+            return r.json()["getLindsByUniprotsResponse"]["affinities"]
+        except Exception as e:  # noqa: BLE001
+            last = e
+            time.sleep(2 * 2**k)
+    raise RuntimeError(f"BindingDB unavailable for {uniprot}: {last}")
 
 
 def p_affinity(value_nm: float) -> float:
@@ -68,7 +74,9 @@ def normalize(records: list[dict]) -> pd.DataFrame:
 
 
 def load_target(uniprot: str, cache_dir: str | Path, fixture: str | Path | None = None) -> pd.DataFrame:
-    """Fetch (or read from cache / offline fixture) and normalize affinities for one target."""
+    """Fetch (or read from cache) and normalize affinities for one target.
+
+    ``fixture`` must be a slice of THIS uniprot's data (offline fallback); never pass another target's file."""
     cache = Path(cache_dir) / f"bindingdb_{uniprot}.json"
     if cache.exists():
         recs = json.loads(cache.read_text())

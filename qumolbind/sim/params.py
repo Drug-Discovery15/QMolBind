@@ -76,7 +76,45 @@ def ligand_topology(mol: Chem.Mol, chain_id: str = "L") -> app.Topology:
     return top
 
 
-def ligand_forcefield_xml(mol: Chem.Mol, params: LigandParams, coords_angstrom: np.ndarray) -> str:
+_AMIDE = Chem.MolFromSmarts("[CX3](=O)-[NX3]")
+
+
+def generic_torsion_xml(mol: Chem.Mol, types: list[str]) -> list[str]:
+    """Heuristic periodic torsions (needed only when the ligand moves in MD; torsion-space poses never use them).
+
+    barrier per central bond, split evenly over its dihedrals: double bonds 100 kJ/mol (n=2, phase pi); amide C-N 60 (n=2);
+    aromatic / sp2-sp2 20 (n=2); sp3-sp3 11 (n=3); sp2-sp3 2 (n=6); bonds to sp (linear) atoms are skipped.
+    """
+    amide = {frozenset(m[i] for i in (0, 2)) for m in mol.GetSubstructMatches(_AMIDE)}
+    hyb = {a.GetIdx(): a.GetHybridization() for a in mol.GetAtoms()}
+    H = Chem.HybridizationType
+    lines = []
+    for b in mol.GetBonds():
+        i, j = b.GetBeginAtomIdx(), b.GetEndAtomIdx()
+        ni = [x.GetIdx() for x in mol.GetAtomWithIdx(i).GetNeighbors() if x.GetIdx() != j]
+        nj = [x.GetIdx() for x in mol.GetAtomWithIdx(j).GetNeighbors() if x.GetIdx() != i]
+        if not ni or not nj or H.SP in (hyb[i], hyb[j]):
+            continue
+        sp2 = lambda k: hyb[k] == H.SP2
+        if b.GetBondType() == Chem.BondType.DOUBLE:
+            n, ph, V = 2, np.pi, 100.0
+        elif frozenset((i, j)) in amide:
+            n, ph, V = 2, np.pi, 60.0
+        elif b.GetIsAromatic() or (sp2(i) and sp2(j)):
+            n, ph, V = 2, np.pi, 20.0
+        elif sp2(i) != sp2(j):
+            n, ph, V = 6, 0.0, 2.0
+        else:
+            n, ph, V = 3, 0.0, 11.0
+        k = V / (len(ni) * len(nj))
+        for a in ni:
+            for d in nj:
+                if a != d:
+                    lines.append(f'  <Proper class1="{types[a]}" class2="{types[i]}" class3="{types[j]}" class4="{types[d]}" periodicity1="{n}" phase1="{ph:.6f}" k1="{k:.6f}"/>')
+    return lines
+
+
+def ligand_forcefield_xml(mol: Chem.Mol, params: LigandParams, coords_angstrom: np.ndarray, with_torsions: bool = False) -> str:
     n = mol.GetNumAtoms()
     names = _atom_names(mol)
     types = [f"lig-{i}" for i in range(n)]
@@ -103,7 +141,10 @@ def ligand_forcefield_xml(mol: Chem.Mol, params: LigandParams, coords_angstrom: 
                 v1, v2 = xyz[i] - xyz[k], xyz[j] - xyz[k]
                 ang = np.arccos(np.clip(np.dot(v1, v2) / np.linalg.norm(v1) / np.linalg.norm(v2), -1, 1))
                 out.append(f'  <Angle class1="{types[i]}" class2="{types[k]}" class3="{types[j]}" angle="{ang:.6f}" k="400.0"/>')
-    out += [" </HarmonicAngleForce>", ' <NonbondedForce coulomb14scale="0.833333333333" lj14scale="0.5">']
+    out += [" </HarmonicAngleForce>"]
+    if with_torsions:
+        out += [" <PeriodicTorsionForce>", *generic_torsion_xml(mol, types), " </PeriodicTorsionForce>"]
+    out += [' <NonbondedForce coulomb14scale="0.833333333333" lj14scale="0.5">']
     for i in range(n):
         out.append(f'  <Atom type="{types[i]}" charge="{params.charges[i]:.6f}" sigma="{params.sigma_nm[i]:.6f}" epsilon="{params.eps_kj[i]:.6f}"/>')
     out += [" </NonbondedForce>", "</ForceField>"]

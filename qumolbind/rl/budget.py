@@ -25,6 +25,8 @@ class Tracker:
         self.best_rmsd = np.nan
         self.curve = np.full(budget, np.nan)       # best score after call i
         self.rmsd_curve = np.full(budget, np.nan)  # RMSD of best-score pose after call i
+        self.log_poses = False
+        self.pose_log: list[tuple[np.ndarray, np.ndarray]] = []  # (coords, [vdw, elec, solv, strain, score]) when enabled
 
     def evaluate(self, coords: np.ndarray):
         if self.calls >= self.budget:
@@ -33,6 +35,8 @@ class Tracker:
         if et.score < self.best_score:
             self.best_score, self.best_coords = et.score, np.array(coords, copy=True)
             self.best_rmsd = self.rmsd_fn(coords)
+        if self.log_poses:
+            self.pose_log.append((np.array(coords, copy=True), np.array([et.vdw, et.elec, et.solv, et.strain, et.score])))
         self.curve[self.calls] = self.best_score
         self.rmsd_curve[self.calls] = self.best_rmsd
         self.calls += 1

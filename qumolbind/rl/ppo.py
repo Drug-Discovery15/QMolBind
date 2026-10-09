@@ -101,6 +101,7 @@ class PPO:
         buf.compute_gae(last_v, cfg.gamma, cfg.gae_lambda)
         data = buf.flat()
         self.last_batch_obs = data["obs"]
+        self.last_batch_ret = data["ret"]
         n = data["obs"].shape[0]
         mb = max(n // cfg.minibatches, 1)
         stats = {"pg_loss": 0.0, "v_loss": 0.0, "entropy": 0.0, "approx_kl": 0.0, "clipfrac": 0.0, "actor_grad_norm": 0.0}
@@ -133,12 +134,13 @@ class PPO:
                 n_mb += 1
         return {k: v / max(n_mb, 1) for k, v in stats.items()}
 
-    def train(self, max_updates: int | None = None, seed: int | None = None) -> list[dict]:
-        """Run until the budget raises BudgetExhausted (or ``max_updates`` updates)."""
+    def train(self, max_updates: int | None = None, seed: int | None = None, until: Callable[[], bool] | None = None) -> list[dict]:
+        """Run until BudgetExhausted, ``max_updates`` updates, or ``until()`` is true (checked after each update). Resumable."""
         cfg = self.cfg
         self._obs, _ = self.env.reset(seed=cfg.seed if seed is None else seed)
         t0 = time.time()
-        while max_updates is None or self.updates < max_updates:
+        n0 = self.updates
+        while (max_updates is None or self.updates - n0 < max_updates) and not (until is not None and until()):
             buf = RolloutBuffer(cfg.rollout_steps, cfg.n_envs, self.obs_dim, self.act_dim)
             ep_stats: list[dict] = []
             try:

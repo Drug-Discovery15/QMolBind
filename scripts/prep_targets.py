@@ -22,7 +22,7 @@ FIXTURES = ROOT / "tests" / "fixtures"
 
 def main() -> None:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--targets", nargs="*", default=["1cil", "3ert", "1uyd"])
+    ap.add_argument("--targets", nargs="*", default=["3ert", "1uyd", "1eve", "1cil"])
     ap.add_argument("--radius", type=float, default=12.0)
     ap.add_argument("--max-torsions", type=int, default=8)
     args = ap.parse_args()
@@ -43,9 +43,9 @@ def main() -> None:
         prot = np.array([[float(l[30:38]), float(l[38:46]), float(l[46:54])] for l in (t.protein_pdb).read_text().splitlines() if l.startswith(("ATOM", "HETATM"))])
         d = np.linalg.norm(prot[None] - lm.native[lm.heavy_idx][:, None], axis=-1)
         print(f"  native min heavy-atom/protein distance = {d.min():.2f} A; contacts<4A: {(d.min(0) < 4).sum()} protein atoms")
-        if tid == "1cil":
-            shutil.copy(t.protein_pdb, FIXTURES / "1cil_protein.pdb")
-            shutil.copy(t.ligand_sdf, FIXTURES / "1cil_ligand_native.sdf")
+        if tid in ("1cil", "3ert"):
+            shutil.copy(t.protein_pdb, FIXTURES / f"{tid}_protein.pdb")
+            shutil.copy(t.ligand_sdf, FIXTURES / f"{tid}_ligand_native.sdf")
 
 
 if __name__ == "__main__":

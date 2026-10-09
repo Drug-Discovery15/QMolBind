@@ -24,8 +24,8 @@ from qumolbind.data.fixtures import FIXTURE_DIR, build_fixtures  # noqa: E402
 CACHE = ROOT / "data_cache"
 PROCESSED = CACHE / "processed"
 # Candidate pool screened programmatically; selection = first accepted per distinct UniProt, max 3.
-CANDIDATES = "1CIL 3ERT 1UYD 1EVE 2HYY 1STP 3PTB 1AZM".split()
-MAX_TARGETS = 3
+CANDIDATES = "3ERT 1UYD 1EVE 1CIL 2HYY 1STP 3PTB 1AZM".split()
+MAX_TARGETS = 4  # 3ert, 1uyd, 1eve (main) + 1cil (zinc-site test fixture only; see DECISIONS D6/D16)
 
 
 def sha256(p: Path) -> str:
@@ -60,27 +60,31 @@ def main() -> None:
         for c in selected:
             tid = c.pdb_id.lower()
             pdb_path = pdb.download_pdb(c.pdb_id)
-            aff = bindingdb.load_target(
-                c.uniprot[0], CACHE, fixture=FIXTURE_DIR / "bindingdb_P00918_tiny.json"
-            )
+            fx = FIXTURE_DIR / "bindingdb_P00918_tiny.json" if c.uniprot[0] == "P00918" else None  # fixture = 1CIL's UniProt only
+            try:
+                aff = bindingdb.load_target(c.uniprot[0], CACHE, fixture=fx)
+            except Exception as e:
+                print(f"  !! affinity data unavailable for {tid} ({c.uniprot[0]}): {e}")
+                aff = None
             h5 = PROCESSED / f"{tid}.h5"
             with h5py.File(h5, "w") as f:
                 f.attrs.update(
                     pdb_id=c.pdb_id, ligand_id=c.ligand_id, ligand_chain=c.ligand_chain, ligand_resnum=c.ligand_resnum,
                     ligand_smiles=c.smiles, resolution=c.resolution, n_rotors=c.n_rotors, uniprot=c.uniprot[0],
                 )
-                g = f.create_group("affinity")
-                g.create_dataset("smiles", data=np.array(aff["smiles"], dtype="S"))
-                g.create_dataset("p_affinity", data=aff["p_affinity"].to_numpy(float))
-                g.create_dataset("measurement", data=np.array(aff["measurement"], dtype="S"))
-                g.create_dataset("n_measurements", data=aff["n_measurements"].to_numpy(int))
+                if aff is not None:
+                    g = f.create_group("affinity")
+                    g.create_dataset("smiles", data=np.array(aff["smiles"], dtype="S"))
+                    g.create_dataset("p_affinity", data=aff["p_affinity"].to_numpy(float))
+                    g.create_dataset("measurement", data=np.array(aff["measurement"], dtype="S"))
+                    g.create_dataset("n_measurements", data=aff["n_measurements"].to_numpy(int))
             manifest["files"][str(pdb_path.relative_to(ROOT))] = sha256(pdb_path)
             manifest["files"][str(h5.relative_to(ROOT))] = sha256(h5)
             manifest["targets"][tid] = {
                 "pdb": c.pdb_id, "ligand": c.ligand_id, "smiles": c.smiles, "resolution": c.resolution,
-                "n_rotors": c.n_rotors, "uniprot": c.uniprot[0], "n_affinity_ligands": len(aff),
+                "n_rotors": c.n_rotors, "uniprot": c.uniprot[0], "n_affinity_ligands": 0 if aff is None else len(aff),
             }
-            print(f"  wrote {h5.name}: {len(aff)} unique ligands")
+            print(f"  wrote {h5.name}: {0 if aff is None else len(aff)} unique ligands")
         try:
             build_fixtures()
         except Exception as e:
