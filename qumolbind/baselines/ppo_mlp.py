@@ -65,6 +65,7 @@ def matched_target_params(actor_cfg: dict | None, K: int) -> int:
     return vqc_param_count(
         c.get("n_qubits", 8), c.get("n_layers", 4), c.get("rotations", "ry"), K,
         c.get("trainable_scale", False), c.get("input_projection", False),
+        encoding=c.get("encoding", "amplitude"), readout_affine=c.get("readout_affine", False),
     )["total_mean_net"]
 
 

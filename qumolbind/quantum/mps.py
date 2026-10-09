@@ -22,3 +22,20 @@ def mps_expectations(theta: np.ndarray, psi: np.ndarray, n: int, K: int, chi: in
     sim = AerSimulator(method="matrix_product_state", matrix_product_state_max_bond_dimension=int(chi))
     sv = Statevector(np.asarray(sim.run(qc).result().get_statevector(qc)))
     return np.array([float(sv.expectation_value(o).real) for o in z_observables(n, K)])
+
+
+def mps_expectations_reupload(vqc, x_row: np.ndarray, chi: int) -> np.ndarray:
+    """MPS simulation of a data re-uploading circuit for ONE input: the per-sample angles are folded into a concrete circuit."""
+    import torch
+
+    with torch.no_grad():
+        extra = vqc.reupload_angles(torch.as_tensor(x_row, dtype=torch.float64)[None])[0].numpy()  # [L, n, n_rot]
+    angles = vqc.theta.detach().numpy() + extra
+    qc = build_circuit(angles, None, vqc.n, vqc.rotations, vqc.entangler, equator_init=vqc.equator_init)
+    qc.save_statevector()
+    sim = AerSimulator(method="matrix_product_state", matrix_product_state_max_bond_dimension=int(chi))
+    sv = Statevector(np.asarray(sim.run(qc).result().get_statevector(qc)))
+    z = np.array([float(sv.expectation_value(o).real) for o in z_observables(vqc.n, vqc.K)])
+    if vqc.r_scale is not None:  # classical affine readout is applied after the quantum expectation values
+        z = z * vqc.r_scale.detach().numpy() + vqc.r_bias.detach().numpy()
+    return z

@@ -19,9 +19,15 @@ from qumolbind.quantum.torch_vqc import ring_pairs
 HERON_BASIS = ["cz", "rz", "sx", "x"]  # IBM Heron-class native set (CZ, not ECR)
 
 
-def build_circuit(theta: np.ndarray, psi: np.ndarray | None, n: int, rotations: str = "ry", entangler: str = "cnot") -> QuantumCircuit:
-    """Encoding (StatePreparation of ``psi``; skipped if None) + ansatz, in the torch/PennyLane convention."""
+def build_circuit(theta: np.ndarray, psi: np.ndarray | None, n: int, rotations: str = "ry", entangler: str = "cnot",
+                  equator_init: bool = False) -> QuantumCircuit:
+    """Encoding (StatePreparation of ``psi``; skipped if None) + ansatz, in the torch/PennyLane convention.
+
+    ``equator_init`` prepares RY(pi/2)^n |0..0> first (re-uploading designs); there ``theta`` holds the per-sample total angles."""
     qc = QuantumCircuit(n)
+    if equator_init:
+        for q in range(n):
+            qc.ry(np.pi / 2, q)
     if psi is not None:
         qc.append(StatePreparation(np.asarray(psi, dtype=complex)), list(range(n)))
     qb = lambda w: n - 1 - w

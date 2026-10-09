@@ -88,14 +88,14 @@ class VQCActor(GaussianActor):
 
     def __init__(self, obs_dim: int, n_actions: int, n_qubits: int = 8, n_layers: int = 4, rotations: str = "ry",
                  entangler: str = "cnot", encoding: str = "amplitude", init_std: float = 0.1, trainable_scale: bool = False,
-                 input_projection: bool = False, init_log_std: float = -0.7, shots: int | None = None) -> None:
+                 input_projection: bool = False, init_log_std: float = -0.7, shots: int | None = None, **vqc_extra) -> None:
         super().__init__(n_actions, init_log_std)
         from qumolbind.quantum.torch_vqc import TorchVQC
 
         if n_actions > n_qubits:
             raise ValueError(f"K={n_actions} torsions need >= {n_actions} qubits for the Z readout (got n={n_qubits})")
         self.vqc = TorchVQC(n_qubits, n_layers, n_actions, rotations, entangler, encoding, init_std, trainable_scale,
-                            input_projection, obs_dim)
+                            input_projection, obs_dim, **vqc_extra)
         self.shots = shots
 
     def mean_net(self, obs: torch.Tensor) -> torch.Tensor:

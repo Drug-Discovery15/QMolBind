@@ -8,7 +8,8 @@ from qumolbind.baselines.common import Problem, RunResult
 from qumolbind.baselines.ppo_mlp import run_ppo
 from qumolbind.rl.actors import VQCActor
 
-ACTOR_KEYS = {"n_qubits", "n_layers", "rotations", "entangler", "encoding", "init_std", "trainable_scale", "input_projection", "shots"}
+ACTOR_KEYS = {"n_qubits", "n_layers", "rotations", "entangler", "encoding", "init_std", "trainable_scale", "input_projection", "shots",
+              "equator_init", "readout_affine", "feat_dim", "reupload_std"}
 
 
 def make_vqc_actor(obs_dim: int, K: int, actor_cfg: dict | None = None) -> VQCActor:
@@ -51,6 +52,11 @@ VARIANTS: dict[str, dict] = {
     "ppo_vqc_cz": {"entangler": "cz"},
     "ppo_vqc_ryrz": {"rotations": "ryrz"},                          # E3
     "ppo_vqc_angle": {"encoding": "angle", "input_projection": True},  # E3: angle encoding needs d->n projection (counted)
+    # exploratory designs (DECISIONS D22, docs/PREREGISTRATION_V2.md)
+    "ppo_vqc_aff": {"readout_affine": True},                                                      # amplitude enc. + trainable readout scale/bias
+    "ppo_vqc_reup": {"encoding": "reupload", "equator_init": True, "readout_affine": True},     # data re-uploading, neutral start, affine readout
+    "ppo_vqc_reup_l8": {"encoding": "reupload", "equator_init": True, "readout_affine": True, "n_layers": 8},
+    "ppo_vqc_reup_ryrz": {"encoding": "reupload", "equator_init": True, "readout_affine": True, "rotations": "ryrz"},
     "ppo_vqc_shots4096": {"shots": 4096}, "ppo_vqc_shots1024": {"shots": 1024}, "ppo_vqc_shots256": {"shots": 256},  # E5
 }
 
