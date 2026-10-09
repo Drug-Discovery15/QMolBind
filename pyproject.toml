@@ -17,6 +17,7 @@ dependencies = [
 [project.optional-dependencies]
 dev = ["pytest"]
 hardware = ["qiskit-ibm-runtime"]
+app = ["fastapi", "uvicorn", "httpx"]
 
 [tool.setuptools.packages.find]
 include = ["qumolbind*"]

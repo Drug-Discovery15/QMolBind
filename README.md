@@ -28,6 +28,14 @@ python scripts/tasks.py smoke      # == make smoke : 1 target, B=500, 2 seeds, a
 orders of magnitude slower (measured in the benchmark table of `REPORT.md` / `docs/ARCHITECTURE.md`), so `make smoke` does **not** finish in ~15 minutes on a
 CPU-only machine (DECISIONS D12). The 8-qubit VQC itself runs on CPU.
 
+## Studio (web frontend)
+
+`python scripts/tasks.py app` (or `python scripts/serve.py --open`) starts a local-only app at http://127.0.0.1:8765 (needs `pip install -e .[app]`):
+an interactive 3D view of the protein pocket and ligand (3Dmol.js), torsion sliders with live Level-1 energy terms and RMSD, one-click search / PPO / QPPO
+runs with live progress and an animation of the improving poses, a stepper for trained VQC policies, and browsers for experiment tables, figures,
+active-learning runs and the generated report. It visualises poses of the known ligands; the system does not generate new molecules. The page loads
+3Dmol.js and marked.js from cdnjs, so it needs internet access in the browser.
+
 ## What is where
 
 | path | content |

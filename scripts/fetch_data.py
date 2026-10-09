@@ -109,7 +109,7 @@ def write_docs(manifest: dict, cands: list, offline: bool) -> None:
           "- RCSB PDB: `https://files.rcsb.org/download/<ID>.pdb`; metadata `https://data.rcsb.org/rest/v1/core/entry/<ID>`;",
           "  ligand SMILES `https://data.rcsb.org/rest/v1/core/chemcomp/<CCD>`.",
           "- BindingDB (per-target, never the full dump): `https://www.bindingdb.org/rest/getLigandsByUniprots?uniprot=<ID>&cutoff=100000&response=application/json`.",
-          "- ZINC-22: loader in `qumolbind/data/zinc.py`; nothing downloaded (stretch only).", ""]
+          "- ZINC-22 (stretch only, nothing downloaded): the file server `files.docking.org/zinc22/` returned HTTP 403 for anonymous access when checked; get a tranche (<= 50k molecules, .smi/.smi.gz) manually from CartBlanche22 (https://cartblanche22.docking.org) and load it with `qumolbind.data.zinc.load_tranche(<path>)`.", ""]
     L += ["## Candidate screen (resolution <= 2.5 A, one drug-like ligand, 3-8 RDKit rotatable bonds, non-covalent)", "",
           "| PDB | res (A) | ligand | heavy | rotors | verdict |", "|---|---|---|---|---|---|"]
     for c in cands:

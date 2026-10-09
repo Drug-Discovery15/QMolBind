@@ -1,8 +1,9 @@
 """Optional ZINC-22 tranche loader (stretch only; not used by the pose-search MVP).
 
-Access method (checked at implementation time): ZINC-22 tranches are served from
-https://files.docking.org/zinc22/2d-<tranche>/... as ``.smi`` (SMILES + zinc id) or gzipped ``.smi.gz``.
-Pass a URL or a local path. The default behaviour never downloads anything.
+Access method as checked on 2026-10-09: https://files.docking.org/zinc22/ answers 403 to anonymous requests (no directory listing),
+while the CartBlanche22 web app (https://cartblanche22.docking.org) is reachable and is the supported way to obtain a tranche
+(download a .smi / .smi.gz of <= 50k molecules there). This loader therefore takes a LOCAL FILE (or a direct URL you obtained
+from CartBlanche) and never downloads anything by default; see docs/DATA.md for the manual-download instructions.
 """
 from __future__ import annotations
 

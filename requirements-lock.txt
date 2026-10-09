@@ -25,6 +25,7 @@ cycler==0.12.1
 diastatic-malt==2.15.3
 dill==0.4.1
 Farama-Notifications==0.0.6
+fastapi==0.143.0
 filelock==3.32.3
 fonttools==4.66.1
 frozenlist==1.8.0
@@ -68,6 +69,7 @@ omegaconf==2.3.1
 OpenMM==8.6.1
 openmmforcefields==0.15.1
 openqasm3==1.0.1
+opentelemetry-api==1.45.1
 orjson==3.13.0
 packaging==26.3
 pandas==3.0.6
@@ -110,6 +112,7 @@ setuptools==84.0.0
 shellingham==1.5.4
 six==1.17.0
 sspilib==0.6.0
+starlette==1.7.0
 stevedore==5.9.1
 sympy==1.14.0
 tensorboard==2.21.0
@@ -127,6 +130,7 @@ typing-inspection==0.4.4
 typing_extensions==4.16.0
 tzdata==2026.5
 urllib3==2.8.0
+uvicorn==0.54.0
 Werkzeug==3.1.9
 xxhash==4.0.1
 yarl==1.25.1

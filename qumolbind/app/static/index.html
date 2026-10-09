@@ -1,0 +1,246 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>QuMolBind Studio</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/3Dmol/2.4.2/3Dmol-min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.2/marked.min.js"></script>
+<style>
+:root{--bg:#f6f7f9;--panel:#fff;--ink:#1b1f24;--mute:#667085;--line:#e4e7ec;--acc:#2a6fbb;--acc2:#e07a1f;--good:#1f8a4c;--bad:#c0392b;--view:#eef1f5}
+@media (prefers-color-scheme:dark){:root{--bg:#0f1318;--panel:#171c23;--ink:#e6e9ee;--mute:#8b95a5;--line:#2a313b;--acc:#5aa2f0;--acc2:#f0a04a;--good:#4cc27f;--bad:#ef6f61;--view:#0b0e12}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.45 system-ui,Segoe UI,Roboto,sans-serif;height:100vh;display:flex;flex-direction:column}
+header{display:flex;align-items:center;gap:14px;padding:10px 16px;background:var(--panel);border-bottom:1px solid var(--line)}
+header h1{font-size:16px;margin:0;font-weight:650;letter-spacing:.2px}
+.badge{font-size:11px;padding:2px 8px;border-radius:99px;background:var(--bg);border:1px solid var(--line);color:var(--mute)}
+main{flex:1;display:grid;grid-template-columns:380px 1fr;min-height:0}
+aside{background:var(--panel);border-right:1px solid var(--line);display:flex;flex-direction:column;min-height:0}
+nav{display:flex;border-bottom:1px solid var(--line)}
+nav button{flex:1;padding:10px 4px;background:none;border:0;border-bottom:2px solid transparent;color:var(--mute);cursor:pointer;font:inherit}
+nav button.on{color:var(--ink);border-color:var(--acc);font-weight:600}
+.tab{display:none;padding:14px;overflow:auto;flex:1}.tab.on{display:block}
+label{display:block;font-size:12px;color:var(--mute);margin:10px 0 3px}
+select,input[type=number],input[type=text]{width:100%;padding:6px 8px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--ink);font:inherit}
+button.btn{padding:7px 12px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--ink);cursor:pointer;font:inherit}
+button.btn:hover{border-color:var(--acc)}button.pri{background:var(--acc);color:#fff;border-color:var(--acc)}button.btn:disabled{opacity:.5;cursor:default}
+.row{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}.row>*{flex:1}
+.tors{display:grid;grid-template-columns:34px 1fr 54px;gap:6px;align-items:center;margin:5px 0;font-size:12px}
+.tors input[type=range]{width:100%}.tors span{color:var(--mute)}.tors .v{text-align:right;font-variant-numeric:tabular-nums}
+.stage{position:relative;min-height:0;background:var(--view)}#viewer{position:absolute;inset:0}
+.hud{position:absolute;left:12px;top:12px;background:color-mix(in srgb,var(--panel) 90%,transparent);border:1px solid var(--line);border-radius:10px;padding:10px 12px;min-width:250px;backdrop-filter:blur(4px)}
+.hud h3{margin:0 0 6px;font-size:12px;color:var(--mute);font-weight:600;text-transform:uppercase;letter-spacing:.5px}
+.bar{display:grid;grid-template-columns:62px 1fr 78px;gap:6px;align-items:center;font-size:12px;margin:2px 0}
+.bar i{display:block;height:7px;border-radius:4px;background:var(--acc)}.bar .t{height:7px;background:var(--line);border-radius:4px;position:relative;overflow:hidden}
+.bar .t i{position:absolute;top:0;bottom:0}.bar b{font-weight:600;text-align:right;font-variant-numeric:tabular-nums}
+.toolbar{position:absolute;right:12px;top:12px;display:flex;gap:6px;flex-wrap:wrap;max-width:60%;justify-content:flex-end}
+.toolbar button{font-size:12px;padding:4px 9px}.toolbar .on{background:var(--acc);color:#fff;border-color:var(--acc)}
+canvas{width:100%;height:150px;background:var(--bg);border:1px solid var(--line);border-radius:8px}
+table{border-collapse:collapse;width:100%;font-size:12px}th,td{padding:4px 6px;border-bottom:1px solid var(--line);text-align:right}th:first-child,td:first-child{text-align:left}th{color:var(--mute);font-weight:600;position:sticky;top:0;background:var(--panel)}
+.note{font-size:12px;color:var(--mute);margin-top:8px}.err{color:var(--bad)}.ok{color:var(--good)}
+.prog{height:6px;background:var(--line);border-radius:4px;overflow:hidden;margin-top:8px}.prog i{display:block;height:100%;background:var(--acc2);width:0}
+.md{padding:4px 2px}.md img{max-width:100%}.md table{display:block;overflow:auto}
+.gal{display:grid;grid-template-columns:1fr;gap:8px}.gal img{width:100%;border:1px solid var(--line);border-radius:6px;background:#fff}
+@media (max-width:860px){main{grid-template-columns:1fr;grid-template-rows:55vh 1fr}aside{order:2;border-right:0;border-top:1px solid var(--line)}.stage{order:1}}
+</style>
+</head>
+<body>
+<header>
+  <h1>QuMolBind Studio</h1><span class="badge" id="plat">oracle: –</span>
+  <select id="target" style="width:auto"></select>
+  <span class="badge" id="tinfo"></span>
+  <span style="flex:1"></span>
+  <span class="badge">poses of known ligands in a frozen pocket · no molecule generation · hardware off</span>
+</header>
+<main>
+<aside>
+  <nav id="nav">
+    <button data-t="pose" class="on">Pose</button><button data-t="search">Search</button><button data-t="policy">Policy</button>
+    <button data-t="results">Results</button><button data-t="report">Report</button>
+  </nav>
+
+  <section class="tab on" id="t-pose">
+    <div class="row"><button class="btn" id="bNative">Native pose</button><button class="btn" id="bRand">Random torsions</button></div>
+    <label>Torsions (deg) — drag to move the ligand; every change is scored by the Level-1 oracle</label>
+    <div id="sliders"></div>
+    <div class="note" id="poseNote"></div>
+  </section>
+
+  <section class="tab" id="t-search">
+    <label>Method</label>
+    <select id="jMethod">
+      <option value="random_search">Random search</option><option value="hill_climb">Hill climb (restarts)</option><option value="cmaes">CMA-ES</option>
+      <option value="ppo_mlp_matched">PPO · MLP (parameter-matched)</option><option value="ppo_mlp_large">PPO · MLP (2×128)</option><option value="ppo_vqc">QPPO · VQC (8 qubits)</option>
+    </select>
+    <div class="row"><div><label>Oracle-call budget</label><input type="number" id="jBudget" value="1000" min="50" max="20000" step="50"></div>
+      <div><label>Seed</label><input type="number" id="jSeed" value="0"></div>
+      <div><label id="hpLabel">Hyper-parameter</label><input type="number" id="jHp" step="any"></div></div>
+    <div class="row"><button class="btn pri" id="bStart">Start</button><button class="btn" id="bCancel" disabled>Cancel</button></div>
+    <div class="prog"><i id="prog"></i></div>
+    <div class="note" id="jStatus">idle</div>
+    <label>Best energy so far vs oracle calls (symlog)</label><canvas id="curve" width="340" height="150"></canvas>
+    <label>Improvement history <span id="histN"></span></label>
+    <input type="range" id="histSlider" min="0" max="0" value="0" style="width:100%">
+    <div class="row"><button class="btn" id="bPlay">▶ Play</button><button class="btn" id="bToPose">Send to Pose tab</button></div>
+    <div class="note">Each method gets the same hard cap on total oracle calls. PPO methods train a policy online; the VQC is simulated exactly on CPU.</div>
+  </section>
+
+  <section class="tab" id="t-policy">
+    <label>Trained VQC policy (checkpoint from results/)</label><select id="pCkpt"></select>
+    <div class="row"><button class="btn pri" id="pStep">Step policy</button><button class="btn" id="pRun">Run episode (20 steps)</button></div>
+    <div class="row"><label style="margin:6px 0"><input type="checkbox" id="pDet" checked> deterministic (mean action)</label></div>
+    <div class="note" id="pNote">Starts from the current pose. Use “Random torsions” in the Pose tab for a fresh start.</div>
+    <label>Action means ⟨Z<sub>i</sub>⟩ (× 60° per step)</label><div id="pBars"></div>
+    <div class="note">Quantum = mean network only: amplitude-encoded state → RY/CNOT ansatz → Pauli-Z. The Gaussian spread and the critic are classical.</div>
+  </section>
+
+  <section class="tab" id="t-results">
+    <label>Experiment</label><select id="rExp"></select>
+    <div style="max-height:260px;overflow:auto;margin-top:8px"><table id="rTable"></table></div>
+    <label>Figures</label><select id="rFig"></select><div class="gal" id="rGal" style="margin-top:8px"></div>
+    <label>Active-learning runs</label><select id="alSel"></select>
+    <div id="alBox"></div>
+    <label>Hardware cost / oracle benchmark</label><div id="auxBox"></div>
+  </section>
+
+  <section class="tab" id="t-report"><div class="md" id="md">loading…</div></section>
+</aside>
+
+<div class="stage">
+  <div id="viewer"></div>
+  <div class="hud"><h3>Level-1 energy (kJ/mol)</h3><div id="hud"></div><div class="bar"><span>RMSD</span><span></span><b id="rmsd">–</b></div></div>
+  <div class="toolbar" id="tools">
+    <button class="btn on" data-k="cartoon">Cartoon</button><button class="btn on" data-k="pocket">Pocket sticks</button><button class="btn" data-k="surface">Surface</button>
+    <button class="btn on" data-k="ghost">Native ghost</button><button class="btn" data-k="labels">Torsion axes</button><button class="btn" data-k="spin">Spin</button>
+  </div>
+</div>
+</main>
+
+<script>
+const $=s=>document.querySelector(s), api=(p,o)=>fetch(p,o).then(r=>r.ok?r.json():r.json().then(e=>{throw new Error(e.detail||r.statusText)}));
+const post=(p,b)=>api(p,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b)});
+const cssv=n=>getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+let T=null, tors=[], view=null, ligModel=null, ghostModel=null, protModel=null, opts={cartoon:1,pocket:1,surface:0,ghost:1,labels:0,spin:0}, evalSeq=0, job=null, hist=[], playing=null, surf=null;
+const fmt=x=>x==null?'–':(Math.abs(x)>=1e5||(Math.abs(x)<.01&&x!==0))?x.toExponential(2):x.toFixed(1);
+const symlog=x=>Math.sign(x)*Math.log10(1+Math.abs(x)/100);
+
+function mkView(){ if(view) view.clear(); view=$3Dmol_create(); }
+function $3Dmol_create(){ return $3Dmol.createViewer($('#viewer'),{backgroundColor:cssv('--view')}); }
+
+async function loadTarget(id){
+  T=await api('/api/target/'+id); tors=[...T.native_torsions];
+  $('#plat').textContent='oracle: '+T.platform; $('#tinfo').textContent=T.K+' torsions';
+  view.removeAllModels(); view.removeAllSurfaces();
+  protModel=view.addModel(T.protein_pdb,'pdb');
+  ghostModel=view.addModel(T.native_mol,'sdf');
+  ligModel=null; buildSliders(); await evaluate(tors,true); view.zoomTo({model:ligModel}); view.render();
+}
+function styleAll(){
+  view.setStyle({model:protModel},{});
+  if(opts.cartoon) view.setStyle({model:protModel},{cartoon:{color:'#7f93ad',opacity:.55}});
+  if(opts.pocket && ligModel) view.addStyle({model:protModel,within:{distance:4.5,sel:{model:ligModel}}},{stick:{radius:.12,colorscheme:'whiteCarbon'}});
+  view.setStyle({model:ghostModel},opts.ghost?{stick:{radius:.09,color:'#9aa4b2',opacity:.35}}:{});
+  if(ligModel) view.setStyle({model:ligModel},{stick:{radius:.2,colorscheme:'orangeCarbon'},sphere:{scale:.22,colorscheme:'orangeCarbon'}});
+  view.removeAllShapes(); view.removeAllLabels();
+  if(opts.labels && ligModel){ const a=ligModel.selectedAtoms({}); T.torsion_atoms.forEach((q,k)=>{const b=a[q[2]],c=a[q[1]];
+    view.addCylinder({start:{x:c.x,y:c.y,z:c.z},end:{x:b.x,y:b.y,z:b.z},radius:.07,color:'#2a9d8f',fromCap:1,toCap:1});
+    view.addLabel('τ'+(k+1),{position:{x:(b.x+c.x)/2,y:(b.y+c.y)/2,z:(b.z+c.z)/2},fontSize:11,backgroundOpacity:.6,backgroundColor:'#2a9d8f',fontColor:'white'});});}
+  if(surf!==null){view.removeSurface(surf);surf=null}
+  if(opts.surface) surf=view.addSurface($3Dmol.SurfaceType.VDW,{opacity:.28,color:'#9db4d3'},{model:protModel});
+  view.render();
+}
+function setPose(molblock){
+  if(ligModel) view.removeModel(ligModel);
+  ligModel=view.addModel(molblock,'sdf'); styleAll();
+}
+function buildSliders(){
+  const box=$('#sliders'); box.innerHTML='';
+  tors.forEach((v,k)=>{ const d=document.createElement('div'); d.className='tors';
+    d.innerHTML=`<span>τ${k+1}</span><input type="range" min="-180" max="180" step="1" value="${v}" data-k="${k}"><span class="v" id="tv${k}">${v.toFixed(0)}°</span>`;
+    d.querySelector('input').oninput=e=>{tors[k]=+e.target.value;$('#tv'+k).textContent=tors[k]+'°';debounced();}; box.appendChild(d);});
+}
+function syncSliders(){ document.querySelectorAll('#sliders input').forEach((s,k)=>{s.value=tors[k];$('#tv'+k).textContent=Math.round(tors[k])+'°'}); }
+let tm=null; const debounced=()=>{clearTimeout(tm);tm=setTimeout(()=>evaluate(tors),90)};
+async function evaluate(t,quiet){
+  const my=++evalSeq; const r=await post('/api/evaluate',{target:T.id,torsions:t}); if(my!==evalSeq) return r;
+  setPose(r.mol); showEnergy(r.terms,r.rmsd); return r;
+}
+function showEnergy(t,rmsd){
+  const rows=[['vdW',t.vdw],['Coulomb',t.elec],['solvation',t.solv],['strain',t.strain],['SCORE',t.score]];
+  $('#hud').innerHTML=rows.map(([n,v])=>{const s=symlog(v)/5, w=Math.min(Math.abs(s),1)*50;
+    return `<div class="bar"><span>${n}</span><span class="t"><i style="left:${s>=0?50:50-w}%;width:${w}%;background:${v>=0?cssv('--bad'):cssv('--good')}"></i></span><b>${fmt(v)}</b></div>`}).join('');
+  $('#rmsd').textContent=rmsd==null?'–':rmsd.toFixed(2)+' Å'; $('#rmsd').className=rmsd!=null&&rmsd<2?'ok':'';
+}
+$('#bNative').onclick=()=>{tors=[...T.native_torsions];syncSliders();evaluate(tors)};
+$('#bRand').onclick=async()=>{tors=(await api('/api/randomize/'+T.id)).torsions;syncSliders();evaluate(tors)};
+
+// ---- tabs / toolbar
+$('#nav').onclick=e=>{const t=e.target.dataset.t; if(!t) return; document.querySelectorAll('#nav button').forEach(b=>b.classList.toggle('on',b===e.target));
+  document.querySelectorAll('.tab').forEach(s=>s.classList.toggle('on',s.id==='t-'+t)); if(t==='results') loadResults(); if(t==='report') loadReport(); if(t==='policy') loadPolicies();};
+$('#tools').onclick=e=>{const k=e.target.dataset.k; if(!k) return; opts[k]=opts[k]?0:1; e.target.classList.toggle('on',!!opts[k]); if(k==='spin') view.spin(!!opts.spin); else styleAll();};
+
+// ---- search jobs
+const HP={random_search:['(none)',null],hill_climb:['step (deg)',20],cmaes:['sigma0 (deg)',20],ppo_mlp_matched:['learning rate',0.01],ppo_mlp_large:['learning rate',0.01],ppo_vqc:['learning rate (VQC)',0.01]};
+function hpSync(){const [l,v]=HP[$('#jMethod').value];$('#hpLabel').textContent=l;$('#jHp').value=v??'';$('#jHp').disabled=v==null}
+$('#jMethod').onchange=hpSync; hpSync();
+function drawCurve(c){const cv=$('#curve'),g=cv.getContext('2d');g.clearRect(0,0,cv.width,cv.height);if(!c||c.length<2)return;
+  const ys=c.map(symlog),lo=Math.min(...ys),hi=Math.max(...ys),sp=(hi-lo)||1;g.strokeStyle=cssv('--acc2');g.lineWidth=2;g.beginPath();
+  ys.forEach((y,i)=>{const X=8+i*(cv.width-16)/(ys.length-1),Y=cv.height-10-(y-lo)/sp*(cv.height-20);i?g.lineTo(X,Y):g.moveTo(X,Y)});g.stroke();
+  g.fillStyle=cssv('--mute');g.font='10px sans-serif';g.fillText(fmt(c[c.length-1])+' kJ/mol',10,12)}
+$('#bStart').onclick=async()=>{
+  try{ hist=[]; $('#histSlider').max=0; const hp=$('#jHp').value;
+    job=(await post('/api/job/start',{target:T.id,method:$('#jMethod').value,budget:+$('#jBudget').value,seed:+$('#jSeed').value,hp:hp===''?null:+hp})).id;
+    $('#bStart').disabled=true;$('#bCancel').disabled=false;poll();}catch(e){$('#jStatus').innerHTML='<span class="err">'+e.message+'</span>'}};
+$('#bCancel').onclick=()=>job&&post('/api/job/'+job+'/cancel',{});
+async function poll(){
+  const s=await api(`/api/job/${job}?since=${hist.length}`); hist.push(...s.new_history);
+  $('#prog').style.width=(100*s.calls/s.budget)+'%'; drawCurve(s.curve); $('#histSlider').max=Math.max(hist.length-1,0); $('#histN').textContent='('+hist.length+')';
+  $('#jStatus').innerHTML=`${s.status} · ${s.calls}/${s.budget} calls · best ${fmt(s.best_score)} kJ/mol · best RMSD ${s.best_rmsd==null?'–':s.best_rmsd.toFixed(2)+' Å'} · ${s.elapsed_s.toFixed(0)} s`+(s.error?` <span class="err">${s.error}</span>`:'');
+  if(s.new_history.length){ showHist(hist.length-1); $('#histSlider').value=hist.length-1; }
+  if(s.status==='running') setTimeout(poll,600); else {$('#bStart').disabled=false;$('#bCancel').disabled=true;
+    if(s.result) $('#jStatus').innerHTML+=`<br>final: success(RMSD&lt;2Å)=${s.result.success}, params=${s.result.n_params}, wall=${s.result.wall_s.toFixed(1)} s`;}
+}
+function showHist(i){const h=hist[i]; if(!h) return; setPose(h.mol); showEnergy(h.terms,h.rmsd); $('#histSlider').value=i;}
+$('#histSlider').oninput=e=>showHist(+e.target.value);
+$('#bPlay').onclick=()=>{ if(playing){clearInterval(playing);playing=null;$('#bPlay').textContent='▶ Play';return} let i=0;$('#bPlay').textContent='■ Stop';
+  playing=setInterval(()=>{ if(i>=hist.length){clearInterval(playing);playing=null;$('#bPlay').textContent='▶ Play';return} showHist(i++)},250)};
+$('#bToPose').onclick=()=>{const i=+$('#histSlider').value; if(hist[i]){tors=[...hist[i].torsions];syncSliders();evaluate(tors);document.querySelector('[data-t=pose]').click()}};
+
+// ---- policy
+async function loadPolicies(){ const p=await api('/api/policies'); const s=$('#pCkpt'); const cur=s.value;
+  s.innerHTML=p.filter(x=>x.target===T.id).map(x=>`<option value="${x.path}">${x.experiment} · ${x.name}</option>`).join('')||'<option value="">no checkpoint for this target — run experiments first</option>'; if(cur) s.value=cur; }
+let pT=0;
+async function policyStep(){ const ck=$('#pCkpt').value; if(!ck) return null;
+  const r=await post('/api/policy/act',{target:T.id,ckpt:ck,torsions:tors,t:pT,deterministic:$('#pDet').checked});
+  tors=r.torsions; syncSliders(); setPose(r.mol); showEnergy(r.terms,r.rmsd); pT=Math.min(pT+1,20);
+  $('#pBars').innerHTML=r.action_mean.map((m,k)=>`<div class="bar"><span>⟨Z${k}⟩</span><span class="t"><i style="left:${m>=0?50:50+m*50}%;width:${Math.abs(m)*50}%;background:${cssv('--acc')}"></i></span><b>${m.toFixed(2)}</b></div>`).join('');
+  $('#pNote').innerHTML=`step ${pT}: score ${fmt(r.before_score)} → ${fmt(r.terms.score)} kJ/mol · ${r.n_quantum_params} quantum parameters`; return r;}
+$('#pStep').onclick=()=>policyStep().catch(e=>$('#pNote').innerHTML='<span class="err">'+e.message+'</span>');
+$('#pRun').onclick=async()=>{pT=0; for(let i=0;i<20;i++){ try{ if(!await policyStep()) break;}catch(e){$('#pNote').innerHTML='<span class="err">'+e.message+'</span>';break} await new Promise(r=>setTimeout(r,350)); }};
+
+// ---- results / report
+let RES=null;
+async function loadResults(){ RES=await api('/api/results'); const se=$('#rExp'); if(!se.options.length){ se.innerHTML=RES.experiments.map(e=>`<option>${e}</option>`).join(''); se.onchange=drawTable;
+    $('#rFig').innerHTML=RES.figures.map(f=>`<option value="${f}">${f.split('/').pop()}</option>`).join(''); $('#rFig').onchange=()=>{$('#rGal').innerHTML=`<img src="/results/${$('#rFig').value}">`}; $('#rFig').onchange();
+    const al=await api('/api/al'); $('#alSel').innerHTML='<option value="">–</option>'+al.map(a=>`<option>${a.id}</option>`).join(''); $('#alSel').onchange=drawAL;
+    const ax=RES.aux; $('#auxBox').innerHTML=['hw_cost','oracle_benchmark','parametrization_report'].filter(k=>ax[k]).map(k=>`<div class="note"><b>${k}</b></div>`+tbl(ax[k])).join(''); }
+  drawTable(); }
+function tbl(rows,cols){ if(!rows||!rows.length) return '<div class="note">no data</div>'; cols=cols||Object.keys(rows[0]);
+  return '<div style="overflow:auto"><table><tr>'+cols.map(c=>`<th>${c}</th>`).join('')+'</tr>'+rows.map(r=>'<tr>'+cols.map(c=>`<td>${typeof r[c]==='number'?(Math.abs(r[c])>=1e5||(Math.abs(r[c])<.01&&r[c]!==0)?r[c].toExponential(2):+r[c].toFixed(3)):(r[c]??'')}</td>`).join('')+'</tr>').join('')+'</table></div>'; }
+function drawTable(){ const e=$('#rExp').value; $('#rTable').outerHTML='<div id="rTable">'+tbl((RES.tables[e]||[]).map(r=>({target:r.target,method:r.method,n:r.n_seeds,'median E':r.median_best_energy,'E lo':r.energy_ci_lo,'E hi':r.energy_ci_hi,success:r.success_rate,params:r.n_params})))+'</div>'; }
+async function drawAL(){ const v=$('#alSel').value; if(!v){$('#alBox').innerHTML='';return} const [a,b]=v.split('/'); const d=await api(`/api/al/${a}/${b}`);
+  $('#alBox').innerHTML=tbl(d.rounds,['round','oracle_calls_L1','n_candidates','selection','n_L2_this_round','n_L2_failed','n_L2_total'])+`<img src="/results/${d.calibration}" style="width:100%;margin-top:8px;background:#fff;border-radius:6px">`+
+   '<div class="note">Candidates (fidelity tags: L0 surrogate · L1 fast oracle · L2 MD)</div>'+tbl(d.candidates.filter(c=>c.selected_for_l2),['round','cand_id','l1_score','l0_mu_dg','l0_sigma_dg','l2_dg','l2_failed']); }
+async function loadReport(){ if($('#md').dataset.done) return; const t=await fetch('/api/report').then(r=>r.text()); $('#md').innerHTML=marked.parse(t).replaceAll('src="results/','src="/results/'); $('#md').dataset.done=1; }
+
+// ---- boot
+(async()=>{
+  view=$3Dmol_create();
+  const ts=await api('/api/targets'); $('#target').innerHTML=ts.map(t=>`<option value="${t.id}">${t.id} (K=${t.K})</option>`).join('');
+  $('#target').onchange=()=>loadTarget($('#target').value);
+  const pref=ts.find(t=>t.id==='1eve')||ts[0]; $('#target').value=pref.id; await loadTarget(pref.id);
+  window.addEventListener('resize',()=>view.resize());
+})().catch(e=>{document.body.insertAdjacentHTML('afterbegin','<div class="err" style="padding:12px">'+e.message+'</div>')});
+</script>
+</body>
+</html>

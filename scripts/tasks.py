@@ -1,6 +1,6 @@
 """Cross-platform task runner mirroring the Makefile (make is not available on stock Windows).
 
-Usage: python scripts/tasks.py <env|data|test|smoke|baselines|train-q|experiments|report>
+Usage: python scripts/tasks.py <env|data|test|smoke|baselines|train-q|experiments|report|app>
 Environment variable EXP=smoke|full selects the experiment config (baselines/train-q default: full; experiments default: smoke).
 """
 from __future__ import annotations
@@ -68,6 +68,10 @@ def t_experiments() -> None:
     script("hw_cost_report.py")
 
 
+def t_app() -> None:
+    script("serve.py", "--open")
+
+
 def t_report() -> None:
     script("make_report.py", "--experiment", exp("smoke"))
 
@@ -88,7 +92,7 @@ def t_smoke() -> None:
 
 TASKS = {
     "env": t_env, "data": t_data, "test": t_test, "smoke": t_smoke, "baselines": t_baselines,
-    "train-q": t_train_q, "experiments": t_experiments, "report": t_report,
+    "train-q": t_train_q, "experiments": t_experiments, "report": t_report, "app": t_app,
 }
 
 if __name__ == "__main__":
