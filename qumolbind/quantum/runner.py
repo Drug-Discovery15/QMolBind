@@ -9,7 +9,7 @@ from qumolbind.baselines.ppo_mlp import run_ppo
 from qumolbind.rl.actors import VQCActor
 
 ACTOR_KEYS = {"n_qubits", "n_layers", "rotations", "entangler", "encoding", "init_std", "trainable_scale", "input_projection", "shots",
-              "equator_init", "readout_affine", "feat_dim", "reupload_std"}
+              "equator_init", "readout_affine", "feat_dim", "reupload_std", "init_log_std"}
 
 
 def make_vqc_actor(obs_dim: int, K: int, actor_cfg: dict | None = None) -> VQCActor:

@@ -70,17 +70,26 @@ def matched_target_params(actor_cfg: dict | None, K: int) -> int:
 
 
 def run_ppo_mlp_matched(problem: Problem, budget: int, seed: int, lr: float = 1e-2, actor_cfg: dict | None = None,
-                        ppo_kw: dict | None = None, logger=None, ckpt_path=None, init_state=None, log_dir=None, **hp) -> RunResult:
+                        ppo_kw: dict | None = None, logger=None, ckpt_path=None, init_state=None, log_dir=None, init_log_std: float = -0.7, **hp) -> RunResult:
     d, K = problem.env_cfg.get("state_dim", 256), problem.target.ligand.K
     target = matched_target_params(actor_cfg, K)
     hidden = matched_mlp_hidden(d, K, target, 1)
-    res, _ = run_ppo(problem, budget, seed, "ppo_mlp_matched", lambda d_, k_: MLPActor(d_, k_, hidden), lr, ppo_kw, logger,
+    res, _ = run_ppo(problem, budget, seed, "ppo_mlp_matched", lambda d_, k_: MLPActor(d_, k_, hidden, init_log_std), lr, ppo_kw, logger,
                      {"hidden": str(hidden), "matched_target_params": target}, init_state=init_state, ckpt_path=ckpt_path, log_dir=log_dir)
     return res
 
 
 def run_ppo_mlp_large(problem: Problem, budget: int, seed: int, lr: float = 1e-2, ppo_kw: dict | None = None,
-                      logger=None, ckpt_path=None, init_state=None, log_dir=None, **hp) -> RunResult:
-    res, _ = run_ppo(problem, budget, seed, "ppo_mlp_large", lambda d_, k_: MLPActor(d_, k_, (128, 128)), lr, ppo_kw, logger,
+                      logger=None, ckpt_path=None, init_state=None, log_dir=None, init_log_std: float = -0.7, **hp) -> RunResult:
+    res, _ = run_ppo(problem, budget, seed, "ppo_mlp_large", lambda d_, k_: MLPActor(d_, k_, (128, 128), init_log_std), lr, ppo_kw, logger,
                      {"hidden": "(128, 128)"}, init_state=init_state, ckpt_path=ckpt_path, log_dir=log_dir)
+    return res
+
+
+def run_ppo_zero_mean(problem: Problem, budget: int, seed: int, lr: float = 1e-2, ppo_kw: dict | None = None, logger=None,
+                      ckpt_path=None, init_state=None, log_dir=None, init_log_std: float = -0.7, **hp) -> RunResult:
+    from qumolbind.rl.actors import ZeroMeanActor
+
+    res, _ = run_ppo(problem, budget, seed, "ppo_zero_mean", lambda d_, k_: ZeroMeanActor(k_, init_log_std), lr, ppo_kw, logger,
+                     {"hidden": "none (mean = 0)"}, init_state=init_state, ckpt_path=ckpt_path, log_dir=log_dir)
     return res

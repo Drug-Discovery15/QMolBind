@@ -18,7 +18,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 from qumolbind.baselines.common import make_problem  # noqa: E402
-from qumolbind.baselines.ppo_mlp import run_ppo_mlp_large, run_ppo_mlp_matched  # noqa: E402
+from qumolbind.baselines.ppo_mlp import run_ppo_mlp_large, run_ppo_mlp_matched, run_ppo_zero_mean  # noqa: E402
 from qumolbind.env.state import symlog  # noqa: E402
 from qumolbind.quantum.runner import VARIANTS, make_variant_runner  # noqa: E402
 from qumolbind.utils.config import load_config, to_dict  # noqa: E402
@@ -34,14 +34,15 @@ def matched_for(variant: str):
     """MLP whose mean-network size is matched to a given VQC design."""
     def run(problem, budget, seed, lr=1e-2, actor_cfg=None, ppo_kw=None, **kw):
         cfg = {**(actor_cfg or {}), **VARIANTS[variant]}
-        res = run_ppo_mlp_matched(problem, budget, seed, lr=lr, actor_cfg=cfg, ppo_kw=ppo_kw)
+        res = run_ppo_mlp_matched(problem, budget, seed, lr=lr, actor_cfg=cfg, ppo_kw=ppo_kw, **{k: v for k, v in kw.items() if k == "init_log_std"})
         res.method = f"ppo_mlp_matched_{variant.replace('ppo_vqc_', '')}"
         return res
     return run
 
 
 def registry() -> dict:
-    reg = {"ppo_mlp_matched": run_ppo_mlp_matched, "ppo_mlp_large": run_ppo_mlp_large, "ppo_mlp_matched_reup": matched_for("ppo_vqc_reup")}
+    reg = {"ppo_mlp_matched": run_ppo_mlp_matched, "ppo_mlp_large": run_ppo_mlp_large, "ppo_mlp_matched_reup": matched_for("ppo_vqc_reup"),
+           "ppo_zero_mean": run_ppo_zero_mean}
     for v in VQC_ALL:
         reg[v] = make_variant_runner(v)
     return reg

@@ -34,6 +34,7 @@ class PoseEnv(gym.Env):
         energy_scale: float = 100.0,
         energy_transform: str = "symlog",
         elite_start_prob: float = 0.0,
+        greedy_accept: bool = False,
         lig_emb: np.ndarray | None = None,
         pocket_emb: np.ndarray | None = None,
     ) -> None:
@@ -43,6 +44,7 @@ class PoseEnv(gym.Env):
         self.max_delta, self.T, self.d = max_delta_deg, episode_len, state_dim
         self.reward_clip, self.reward_scale, self.energy_scale = reward_clip, reward_scale, energy_scale
         self.energy_transform = energy_transform
+        self.greedy_accept = greedy_accept  # keep a proposed move only if it lowers the score (hill-climb style acceptance)
         self.elite_start_prob = elite_start_prob  # prob. an episode starts from the oracle's elite archive instead of random torsions
         self.lig_emb, self.pocket_emb = lig_emb, pocket_emb
         self.action_space = spaces.Box(-1.0, 1.0, (self.K,), dtype=np.float32)
@@ -106,13 +108,14 @@ class PoseEnv(gym.Env):
 
     def step(self, action: np.ndarray):
         a = np.clip(np.asarray(action, dtype=np.float64), -1.0, 1.0)
-        self.coords = self.lm.apply_torsion_deltas(self.coords, a * self.max_delta)
-        self.last_terms = self._score(self.coords)
-        e_new = self._transform(self.last_terms.score)
-        raw = -(e_new - self._e) / self.reward_scale
+        prop = self.lm.apply_torsion_deltas(self.coords, a * self.max_delta)
+        new_terms = self._score(prop)
+        e_new = self._transform(new_terms.score)
+        raw = -(e_new - self._e) / self.reward_scale   # reward = improvement of the PROPOSAL (negative if it is worse)
         reward = float(np.clip(raw, -self.reward_clip, self.reward_clip))
         clipped = abs(raw) > self.reward_clip
-        self._e = e_new
+        if not self.greedy_accept or new_terms.score < self.last_terms.score:
+            self.coords, self.last_terms, self._e = prop, new_terms, e_new   # accepted (always, unless greedy and not better)
         self.t += 1
         self.n_steps += 1
         self.n_clipped += int(clipped)
@@ -140,5 +143,5 @@ def make_env(
     oracle = oracle or target.make_oracle(**okw)
     if wrap_oracle is not None:
         oracle = wrap_oracle(oracle)
-    allowed = {"max_delta_deg", "episode_len", "state_dim", "reward_clip", "reward_scale", "energy_scale", "energy_transform", "elite_start_prob"}
+    allowed = {"max_delta_deg", "episode_len", "state_dim", "reward_clip", "reward_scale", "energy_scale", "energy_transform", "elite_start_prob", "greedy_accept"}
     return PoseEnv(target, oracle, **{k: v for k, v in cfg.items() if k in allowed})

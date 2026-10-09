@@ -80,6 +80,19 @@ def matched_mlp_hidden(obs_dim: int, n_actions: int, target_params: int, n_hidde
     return best
 
 
+class ZeroMeanActor(GaussianActor):
+    """Classical diagnostic baseline: mean is identically 0, only the (state-independent) step size log_std is learned.
+
+    With greedy acceptance this is an adaptive-step-size random local search; it shows what the MLP / VQC mean networks add."""
+
+    def __init__(self, n_actions: int, init_log_std: float = -0.7) -> None:
+        super().__init__(n_actions, init_log_std)
+        self._dummy = nn.Parameter(torch.zeros(1), requires_grad=False)  # keeps mean_params() non-empty for the optimiser grouping
+
+    def mean_net(self, obs: torch.Tensor) -> torch.Tensor:
+        return torch.zeros(obs.shape[0], self.K)
+
+
 class VQCActor(GaussianActor):
     """Quantum mean network: <Z_i> of a variational circuit on the amplitude-encoded state; classical log_std.
 

@@ -112,3 +112,30 @@ def test_elite_restart_starts_from_archive_and_defaults_off() -> None:
     assert any(np.allclose(env.coords, c) for _, c in tr.archive)        # started from an elite pose
     env0 = make_env("1cil", {"episode_len": 3}, target=prob.target, oracle=prob.oracle, wrap_oracle=lambda o: tr)
     assert env0.elite_start_prob == 0.0
+
+
+def test_greedy_accept_never_worsens_current_pose_and_reward_reflects_proposal() -> None:
+    env = make_env("1cil", {"episode_len": 30, "greedy_accept": True})
+    env.reset(seed=2)
+    cur = env.last_terms.score
+    saw_reject = False
+    rng = np.random.default_rng(0)
+    for _ in range(30):
+        c0 = env.coords.copy()
+        _, r, _, _, info = env.step(rng.uniform(-1, 1, env.K))
+        assert env.last_terms.score <= cur + 1e-9           # accepted pose never gets worse
+        if env.last_terms.score == cur:
+            saw_reject = True
+            assert np.allclose(env.coords, c0)              # rejected -> pose unchanged
+        cur = env.last_terms.score
+    assert saw_reject and np.isfinite(info["best_energy"])
+    assert info["best_energy"] <= cur + 1e-9
+
+
+def test_zero_mean_actor_learns_only_log_std() -> None:
+    import torch
+
+    from qumolbind.rl.actors import ZeroMeanActor
+
+    a = ZeroMeanActor(3, -1.0)
+    assert torch.all(a(torch.randn(5, 256)) == 0) and a.n_mean_params() == 1 and a.log_std.requires_grad
