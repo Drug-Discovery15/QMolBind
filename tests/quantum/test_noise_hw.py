@@ -65,3 +65,18 @@ def test_transpile_to_heron_basis_and_cost_grows_with_n() -> None:
     tq = transpile(qc, basis_gates=HERON_BASIS, coupling_map=heron_like_coupling(4), optimization_level=1, seed_transpiler=0)
     assert set(tq.count_ops()) <= set(HERON_BASIS) | {"barrier"}
     assert transpile_cost(qc, 4)["two_qubit_gates"] >= 3
+
+
+def test_mps_exact_at_full_bond_dimension_and_degrades_for_small_chi() -> None:
+    from qumolbind.quantum.mps import mps_expectations
+
+    n, K = 6, 6
+    vqc = TorchVQC(n, 3, K, init_std=0.8)
+    x = torch.randn(1, 64, dtype=torch.float64)
+    psi, _ = amplitude_state(x, n)
+    exact = vqc(x).detach()[0].numpy()
+    th = vqc.theta.detach().numpy()
+    full = mps_expectations(th, psi[0].numpy(), n, K, chi=2 ** (n // 2))
+    assert np.abs(full - exact).max() < 1e-8
+    small = mps_expectations(th, psi[0].numpy(), n, K, chi=1)
+    assert np.abs(small - exact).max() > 1e-3  # a product-state truncation cannot reproduce an entangled output

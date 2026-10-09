@@ -69,3 +69,39 @@ Lockfile: `requirements-lock.txt` (pip freeze of `.venv`).
 - CMA-ES (sigma0=40) was initially worse than random search on 3ERT: the clash landscape is rugged at the 40 deg scale (energies up to 1e11), step size diverged. Implementation validated on a smooth periodic objective (tests/baselines); grid was moved to smaller sigma. This is a property of the landscape, not tuned away.
 - `ppo_mlp_matched`: exact matching to a 32-parameter VQC is infeasible with the raw 256-d input (a width-1 hidden layer already has 263 parameters); the closest feasible network is used and both counts are reported. Against VQC variant (ii) (trainable 256->256 projection, 65,792 params) matching is exact to <1%.
 - 1CIL has only 3 small torsions with a fixed root: every random start already has RMSD ~1.3 A, so "success" is uninformative there. Reported alongside the random-start success rate; 3ERT and 1UYD (8 torsions) are the informative targets.
+
+## D15. Encoders (Stage 5)
+- `pyg-lib` / `torch-cluster` / `torch-sparse` have no wheels for this torch build, so PyG's DimeNet++/SchNet cannot call `radius_graph` / `triplets`. Decision: pure-torch replacements (`encoders/gnn.py`, monkey-patched into PyG), verified against brute force; DimeNet++ stays the default. Alternatives: fall back to SchNet/GINE (both also implemented and tested).
+- The affinity head uses SiLU, not ReLU: PyG zero-initialises DimeNet's output layer, the 64-d embedding starts at exactly 0, ReLU(0) has zero gradient and the model stayed at the mean prediction (observed: train MSE 1.000 for 11 epochs).
+- Training set capped at 2500 molecules per target (random subsample, seed 0) to bound conformer generation time; scaffold split 80/10/10. Report whatever comes out: see the affinity table (the LightGBM-ECFP4 baseline beat the GNN on the targets trained so far).
+- BindingDB returned HTTP 503 for AChE (P04058) during the build: 1EVE has structure data but no affinity set, so no GNN/ligand embedding for it (embeddings are off by default). A first version of the fetcher silently substituted another target's fixture; fixed (fixture only for its own UniProt, retries, explicit failure) and the bogus files deleted.
+- ESM-2 pocket embedding: mean-pooled last hidden state, fixed random projection 320 -> 32 (JL-style), L2-normalised.
+
+## D16. Targets: 1CIL demoted to a test fixture (supersedes the target choice of D6)
+- Zinc-site carbonic anhydrase with a bare non-bonded Zn2+ ion: the native pose has a positive interaction energy (neutral sulfonamide next to Zn2+) and MD collapses within ~0.4 ps (ligand N falls onto Zn2+; deep Coulomb well, shallow LJ). Real treatments need bonded/cationic-dummy Zn models or a deprotonated sulfonamide.
+- Decision: main targets = 3ERT, 1UYD, 1EVE (metal-free, all 6-8 torsions). 1CIL remains in the data screen and as a small committed fixture for unit tests (K=3, fast). Smoke target = 1EVE (strained random starts still relax in Level-2 MD); offline fallback = committed 3ERT fixture.
+
+## D17. Level-2 oracle details
+- Ligand torsions for MD are heuristic generic periodic terms (barriers: double bond 100, amide 60, sp2-sp2 20, sp3-sp3 11, sp2-sp3 2 kJ/mol) - fast-oracle poses never use them.
+- OpenCL force accumulation is fixed-point: forces saturate at 2^31 kJ/mol/nm for strained poses, so the minimiser stalls and MD diverges (NaN). Protocol: (1) torsion-space pre-relaxation against the Level-1 score (150 evals, counted as Level-2 cost, not in the L1 budget), reject if still > 1.5e3 kJ/mol; (2) staged Cartesian minimisation; (3) 30 K -> 300 K heating at 0.5 fs for ~1 ps; (4) 2 fs production with H-bond constraints. Failures are recorded (`l2_failed`) and excluded from surrogate training.
+- MD length: smoke 2 ps (plumbing only), full 100 ps; first half of frames discarded. Protein frozen (mass 0); single trajectory; no entropy.
+- Consequence observed in the smoke run: strained candidates relax into similar basins, so L2 dG is only weakly pose-dependent there (Spearman(L1, L2) is reported, not assumed).
+
+## D18. Quantum policy details
+- Readout of the first K qubits requires K <= n; the 8-torsion targets therefore need n >= 8.
+- Amplitude encoding of a vector whose length differs from 2^n pads with zeros / truncates (n=4 keeps only the sin/cos torsion block of the state); zero input maps to |0...0>.
+- Angle encoding needs one feature per qubit: it uses a trainable d -> n projection (counted) with RY(pi tanh(.)) angles (variant `ppo_vqc_angle`).
+- Shot noise (E5) is simulated in the forward pass (sampled readout) with the analytic gradient (straight-through), i.e. NOT a hardware-style parameter-shift estimator. Gate noise (E6) is evaluation-only (density matrix, depolarizing on both qubits of every CNOT/CZ, matches PennyLane `default.mixed` to 1e-8) - policies are not trained under noise.
+- Near-identity init `theta ~ N(0, 0.1^2)` + amplitude encoding gives initial means far from 0 for qubits whose basis-state bits are mostly 0 (the state occupies low basis indices); this is a property of the specified design, not tuned away.
+- `ppo_mlp_matched`: see D14; for the 32-parameter VQC no MLP on the raw 256-d input can be matched.
+
+## D19. Experiments E4-E8 (what was and was not done)
+- E4 reports gradient variance at random init (>= 200 inits, near-identity and uniform inits, cost = local <Z_0> on real env states); no trained n/L scaling sweep (K <= n and runtime).
+- E7 uses Qiskit-Aer matrix_product_state with `initialize` (exact at chi = 2^(n/2) = 16, tested); the pre-registered clause uses chi = 4 (docs/PREREGISTRATION.md).
+- E8 transfers 3ERT -> 1UYD (both K=8) because the MLP output layer is K-specific; fine-tune budget = 25% of B; same seeds shifted by 500 for the destination.
+- The MPI-style "vectorised rollouts via multiprocessing" exists (`env/vec.py::SubprocVecEnv`, tested) but experiments use the in-process `SyncVecEnv` sharing one oracle: with the GPU oracle the OpenCL context, not Python, is the bottleneck and a shared context avoids one GPU context per worker.
+
+## D20. Packaging
+- The Docker CLI is installed on the build machine but the Docker Desktop daemon was not running; starting a GUI daemon was not done without being asked, so the Dockerfile has NOT been built or verified (it follows environment.yml: conda-forge Python 3.11 + pip for the rest). The tested environment is the Windows pip venv. In a container without a GPU the oracle falls back to the CPU platform (D12).
+- `requirements-lock.txt` is a `pip freeze` of the tested `.venv` (Windows, Python 3.12, CPU torch).
+- Smoke runtime measured on the build machine (RTX 5070 Ti, 24 cores): see `results/smoke_run.log` ("real" line).

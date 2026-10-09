@@ -75,3 +75,20 @@ def test_subproc_vec_env() -> None:
         assert not np.array_equal(obs[0], obs[1])  # workers are seeded differently
     finally:
         v.close()
+
+
+def test_rollout_helper_depends_on_policy_and_keeps_episode_end_stats() -> None:
+    """Regression: evaluating through an auto-resetting vec env returned the NEXT episode's start for every policy."""
+    import torch
+
+    from qumolbind.baselines.common import make_problem
+    from qumolbind.eval.policy_io import rollout
+
+    prob = make_problem("1cil", {"episode_len": 4})
+    ls = torch.full((3,), -3.0)
+    _, b0, _, e0, f0 = rollout(prob, lambda o: torch.zeros(o.shape[0], 3), ls, 3, seed=1, sample=False)
+    _, b1, _, e1, f1 = rollout(prob, lambda o: torch.ones(o.shape[0], 3), ls, 3, seed=1, sample=False)
+    assert np.array_equal(e0, e1)                 # identical starts
+    assert not np.allclose(f0, f1)                # different policies -> different final energies
+    assert np.allclose(f0, e0)                    # zero action never moves the pose
+    assert np.all(b0 <= e0 + 1e-9)

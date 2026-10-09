@@ -28,7 +28,9 @@ def build_vec_env(problem: Problem, tracker: Tracker, n_envs: int) -> SyncVecEnv
 def run_ppo(
     problem: Problem, budget: int, seed: int, method: str, make_actor: Callable[[int, int], GaussianActor],
     lr: float = 1e-2, ppo_kw: dict | None = None, logger=None, hparams: dict | None = None,
+    init_state: dict | None = None, ckpt_path: str | None = None, on_update=None, log_dir: str | None = None,
 ) -> tuple[RunResult, PPO]:
+    """``init_state`` = {'actor': sd, 'critic': sd} loads pretrained weights (transfer, E8); ``ckpt_path`` saves final weights."""
     seed_everything(seed)
     kw = dict(ppo_kw or {})
     cfg = PPOConfig(actor_lr=lr, seed=seed, **kw)
@@ -38,9 +40,21 @@ def run_ppo(
     K = problem.target.ligand.K
     actor = make_actor(d, K)
     critic = Critic(d)
-    ppo = PPO(vec, actor, critic, cfg, logger=logger)
+    if init_state is not None:
+        actor.load_state_dict(init_state["actor"])
+        critic.load_state_dict(init_state["critic"])
+    if logger is None and log_dir is not None:
+        from qumolbind.utils.logging import RunLogger
+
+        logger = RunLogger(log_dir, "metrics", tensorboard=False)
+    ppo = PPO(vec, actor, critic, cfg, logger=logger, on_update=on_update)
     t0 = time.perf_counter()
     ppo.train()
+    if ckpt_path is not None:
+        import pathlib
+
+        pathlib.Path(ckpt_path).parent.mkdir(parents=True, exist_ok=True)
+        torch.save({"actor": actor.state_dict(), "critic": critic.state_dict(), "target": problem.target_id, "seed": seed, "method": method}, ckpt_path)
     hp = {"lr": lr, "n_mean_params": actor.n_mean_params(), "clip_rate": vec.clip_rate(), **(hparams or {})}
     res = finalize(tracker, method, problem.target_id, seed, actor.n_mean_params(), hp, time.perf_counter() - t0)
     return res, ppo
@@ -55,17 +69,17 @@ def matched_target_params(actor_cfg: dict | None, K: int) -> int:
 
 
 def run_ppo_mlp_matched(problem: Problem, budget: int, seed: int, lr: float = 1e-2, actor_cfg: dict | None = None,
-                        ppo_kw: dict | None = None, logger=None, **hp) -> RunResult:
+                        ppo_kw: dict | None = None, logger=None, ckpt_path=None, init_state=None, log_dir=None, **hp) -> RunResult:
     d, K = problem.env_cfg.get("state_dim", 256), problem.target.ligand.K
     target = matched_target_params(actor_cfg, K)
     hidden = matched_mlp_hidden(d, K, target, 1)
     res, _ = run_ppo(problem, budget, seed, "ppo_mlp_matched", lambda d_, k_: MLPActor(d_, k_, hidden), lr, ppo_kw, logger,
-                     {"hidden": str(hidden), "matched_target_params": target})
+                     {"hidden": str(hidden), "matched_target_params": target}, init_state=init_state, ckpt_path=ckpt_path, log_dir=log_dir)
     return res
 
 
 def run_ppo_mlp_large(problem: Problem, budget: int, seed: int, lr: float = 1e-2, ppo_kw: dict | None = None,
-                      logger=None, **hp) -> RunResult:
+                      logger=None, ckpt_path=None, init_state=None, log_dir=None, **hp) -> RunResult:
     res, _ = run_ppo(problem, budget, seed, "ppo_mlp_large", lambda d_, k_: MLPActor(d_, k_, (128, 128)), lr, ppo_kw, logger,
-                     {"hidden": "(128, 128)"})
+                     {"hidden": "(128, 128)"}, init_state=init_state, ckpt_path=ckpt_path, log_dir=log_dir)
     return res

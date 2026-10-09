@@ -103,6 +103,7 @@ rich==15.0.0
 rustworkx==0.18.1
 safetensors==0.8.0
 samplomatic==0.21.0
+scikit-learn==1.9.1
 scipy==1.18.1
 scipy-openblas32==0.3.34.237.0
 setuptools==84.0.0

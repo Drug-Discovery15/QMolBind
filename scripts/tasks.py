@@ -1,6 +1,7 @@
 """Cross-platform task runner mirroring the Makefile (make is not available on stock Windows).
 
 Usage: python scripts/tasks.py <env|data|test|smoke|baselines|train-q|experiments|report>
+Environment variable EXP=smoke|full selects the experiment config (baselines/train-q default: full; experiments default: smoke).
 """
 from __future__ import annotations
 
@@ -19,24 +20,30 @@ IMPORT_CHECK = (
 )
 
 
-def run(*args: str) -> None:
+def run(*args: str, check: bool = True) -> int:
     print("+", " ".join(args), flush=True)
     r = subprocess.run(list(args), cwd=ROOT)
-    if r.returncode != 0:
+    if check and r.returncode != 0:
         sys.exit(r.returncode)
+    return r.returncode
 
 
-def script(name: str, *args: str) -> None:
-    run(PY, f"scripts/{name}", *args)
+def script(name: str, *args: str, check: bool = True) -> int:
+    return run(PY, f"scripts/{name}", *args, check=check)
+
+
+def exp(default: str) -> str:
+    return os.environ.get("EXP", default)
 
 
 def t_env() -> None:
-    run(PY, "-m", "pip", "install", "-e", ".[dev]")
+    run(PY, "-m", "pip", "install", "-e", ".[dev,hardware]")
     run(PY, "-c", IMPORT_CHECK)
 
 
 def t_data() -> None:
-    script("fetch_data.py")
+    script("fetch_data.py")  # offline-safe: falls back to tests/fixtures and documents the manual download in docs/DATA.md
+    script("prep_targets.py", check=False)
 
 
 def t_test() -> None:
@@ -44,24 +51,38 @@ def t_test() -> None:
 
 
 def t_baselines() -> None:
-    script("run_experiments.py", "--only", "baselines", "--experiment", os.environ.get("EXP", "full"))
+    script("run_experiments.py", "--only", "baselines", "--experiment", exp("full"))
 
 
 def t_train_q() -> None:
-    script("train.py", f"experiment={os.environ.get('EXP', 'full')}")
+    script("train.py", f"experiment={exp('full')}", *(["--sweep-lr"] if exp("full") == "full" else []))
 
 
 def t_experiments() -> None:
-    script("run_experiments.py", "--experiment", os.environ.get("EXP", "smoke"))
+    e = exp("smoke")
+    script("run_experiments.py", "--experiment", e)                    # E1, E2, E3, E5
+    script("barren_plateau.py", "--experiment", e)                     # E4
+    script("noise_eval.py", "--experiment", e)                         # E6
+    script("simulability.py", "--experiment", e)                       # E7
+    script("transfer.py", "--experiment", e)                           # E8
+    script("hw_cost_report.py")
 
 
 def t_report() -> None:
-    script("make_report.py")
+    script("make_report.py", "--experiment", exp("smoke"))
 
 
 def t_smoke() -> None:
+    """1 target, B=500, 2 seeds, all methods, 2 AL rounds, report. Needs the OpenCL platform for OpenMM (see DECISIONS D12)."""
+    os.environ["EXP"] = "smoke"
     t_data()
-    script("run_experiments.py", "--experiment", "smoke", "--with-al")
+    if not (ROOT / "data_cache" / "targets" / "1eve" / "protein.pdb").exists():
+        print("[smoke] 1eve not prepared (offline?) -> falling back to the committed 3ert fixture target")
+        os.environ["QMB_TARGETS"] = "3ert"
+    t_experiments()
+    script("run_active_learning.py", "--experiment", "smoke")
+    script("run_hardware_eval.py", "--n-states", "5", check=False)
+    script("random_rollouts.py", "--targets", "3ert", "--episodes", "5", check=False)
     t_report()
 
 

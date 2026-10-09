@@ -29,14 +29,15 @@ def quantum_diagnostics(ppo, row: dict) -> None:
 
 
 def run_ppo_vqc(problem: Problem, budget: int, seed: int, lr: float = 1e-2, actor_cfg: dict | None = None,
-                ppo_kw: dict | None = None, logger=None, method: str = "ppo_vqc", return_ppo: bool = False, **hp):
+                ppo_kw: dict | None = None, logger=None, method: str = "ppo_vqc", return_ppo: bool = False,
+                ckpt_path: str | None = None, init_state: dict | None = None, log_dir: str | None = None, **hp):
     cfg = dict(actor_cfg or {})
     cfg.pop("lr", None)  # lr is a separate argument (swept {3e-3, 1e-2, 3e-2})
     def factory(d: int, k: int) -> VQCActor:
         return make_vqc_actor(d, k, cfg)
 
     res, ppo = run_ppo(problem, budget, seed, method, factory, lr, ppo_kw, logger,
-                       {"n_quantum_params": factory(problem.env_cfg.get("state_dim", 256), problem.target.ligand.K).n_quantum_params(),
+                       init_state=init_state, ckpt_path=ckpt_path, on_update=quantum_diagnostics, log_dir=log_dir, hparams={"n_quantum_params": factory(problem.env_cfg.get("state_dim", 256), problem.target.ligand.K).n_quantum_params(),
                         "n_classical_mean_params": factory(problem.env_cfg.get("state_dim", 256), problem.target.ligand.K).n_classical_mean_params(),
                         **{f"vqc_{k}": v for k, v in cfg.items() if k in ACTOR_KEYS}})
     return (res, ppo) if return_ppo else res
