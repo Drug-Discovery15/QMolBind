@@ -1,5 +1,5 @@
 name: full
 budget: 20000
 seeds: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
-targets: [1stp]
+targets: [1cil, 1uyd, 3ert]
 al_rounds: 5
