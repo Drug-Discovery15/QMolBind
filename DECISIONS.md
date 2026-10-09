@@ -33,3 +33,15 @@ Lockfile: `requirements-lock.txt` (pip freeze of `.venv`).
 ## D7. Data storage: manifest with sha256 instead of DVC
 - Decision: HDF5 per target in data_cache/processed/ + manifest.json (sha256). Alternative: DVC (extra dependency, needs remote). Prompt allows either.
 - BindingDB: censored values (<, >) dropped; dedupe by canonical SMILES preferring Kd > Ki > IC50, median pAffinity within the preferred type; `measurement` and `n_measurements` kept.
+
+## D8. Protein prep
+- pdbfixer (heavy atoms, no invented loops; pH 7.4 hydrogens via Modeller). Chains kept = those with a heavy atom within 6 A of the ligand.
+- Catalytic/structural metals ZN, MG, CA, MN within the pocket are KEPT (prompt says remove heteroatoms except the ligand): 1CIL's sulfonamide binds the active-site Zn, and without it the target is meaningless. They are modelled as non-bonded ions (amber14 ion templates).
+- Pocket truncation to residues within 12 A of the ligand is applied by default for ALL targets (not only if slow), with ACE/NME caps built from the real coordinates of the removed neighbours and gaps <= 3 residues filled. Reason: keeps oracle cost low; protein is frozen anyway. 1CIL: 142 res / 2009 atoms; 3ERT: 132 / 2051; 1UYD: 147 / 2150.
+
+## D9. Torsion application: own Rodrigues rotation, not RDKit SetDihedral
+- Alternative: rdMolTransforms.SetDihedralDeg (mutates a Conformer, ~10x slower in Python, ambiguous about which side moves for ring-adjacent bonds). Mine rotates the side not containing the root fragment about the current bond axis; tests verify bond lengths preserved, exact dihedral change, +theta/-theta restore (< 1e-6 A) and agreement with RDKit's GetDihedralDeg.
+- Rotatable bonds: RDKit *strict* SMARTS (no amides, no terminal CF3/tBu); K cap keeps the torsions that move the most atoms. Root fragment = largest heavy-atom component after cutting rotatable bonds.
+
+## D10. RMSD symmetry
+- Automorphisms are computed on the topology-only heavy-atom graph (bond orders/charges/aromaticity ignored) so carboxylate, sulfonyl and nitro oxygens are interchangeable. RDKit's CalcRMS uses typed matching and would count a carboxylate O swap as an error; tests compare against CalcRMS on a molecule where the two coincide. RMSD is in-place (no superposition), evaluation only.

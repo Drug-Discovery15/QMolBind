@@ -20,7 +20,7 @@ def test_fixture_pocket_has_single_ligand() -> None:
     assert any(l.startswith("ATOM") for l in text.splitlines())
 
 
-def test_rotor_count_ets() -> None:
+def test_rotor_count_ethoxzolamide() -> None:
     mol = Chem.MolFromSmiles("CCOc1ccc2nc(sc2c1)S(N)(=O)=O")  # ethoxzolamide
     assert rdMolDescriptors.CalcNumRotatableBonds(mol) == 3
 
