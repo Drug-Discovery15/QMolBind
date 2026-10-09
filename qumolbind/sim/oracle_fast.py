@@ -28,6 +28,7 @@ from qumolbind.sim.params import (
 
 ONE_4PI_EPS0 = 138.93545764438198  # kJ nm / (mol e^2)
 GB_GROUP, NB_GROUP = 2, 1
+NONFINITE_CAP = 1e18  # kJ/mol stand-in for NaN/inf energies (extreme overlaps); such calls are counted in oracle.n_nonfinite
 
 
 @dataclass
@@ -73,6 +74,7 @@ class FastOracle:
         self.include_strain = include_strain
         self.minimize_iters = minimize_iters
         self.calls = 0
+        self.n_nonfinite = 0  # evaluations whose energy was NaN/inf and was replaced by NONFINITE_CAP
         self.params: LigandParams = parametrize_ligand(self.mol)
         self.strain = StrainEnergy(self.mol, native_coords)
 
@@ -138,6 +140,10 @@ class FastOracle:
         solv = self._energy(self.ctx_c, {GB_GROUP}) - self.gb_p - self._energy(self.ctx_l, {GB_GROUP})
         strain = self.strain(lig_nm * 10.0) if self.include_strain else 0.0
         e_int = vdw + coul + solv
+        if not np.isfinite(e_int + strain):
+            self.n_nonfinite += 1
+            vdw = coul = solv = strain = e_int = NONFINITE_CAP
+            return EnergyTerms(vdw, coul, solv, strain, e_int, NONFINITE_CAP)
         return EnergyTerms(vdw, coul, solv, strain, e_int, e_int + strain)
 
     def _minimized(self, lig_nm: np.ndarray) -> np.ndarray:

@@ -15,7 +15,7 @@ TYPE_PRIORITY = {"Kd": 0, "Ki": 1, "IC50": 2}  # prefer direct binding constants
 RDLogger.DisableLog("rdApp.*")
 
 
-def fetch_raw(uniprot: str, cutoff_nm: float = 100000, timeout: float = 180, retries: int = 4) -> list[dict]:
+def fetch_raw(uniprot: str, cutoff_nm: float = 100000, timeout: float = 60, retries: int = 3) -> list[dict]:
     """GET with exponential backoff (the public endpoint returns transient 503s)."""
     import time
 

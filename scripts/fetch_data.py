@@ -35,6 +35,7 @@ def sha256(p: Path) -> str:
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--max-targets", type=int, default=MAX_TARGETS)
+    ap.add_argument("--skip-affinity", action="store_true", help="structures only (smoke does not need BindingDB)")
     args = ap.parse_args()
     PROCESSED.mkdir(parents=True, exist_ok=True)
     manifest: dict = {"created": datetime.now(timezone.utc).isoformat(), "files": {}, "targets": {}}
@@ -57,15 +58,23 @@ def main() -> None:
         print("[fetch_data] OFFLINE: using tests/fixtures only. See docs/DATA.md for manual download.")
         manifest["offline_fixture_only"] = True
     else:
+        bindingdb_down = False
         for c in selected:
             tid = c.pdb_id.lower()
             pdb_path = pdb.download_pdb(c.pdb_id)
             fx = FIXTURE_DIR / "bindingdb_P00918_tiny.json" if c.uniprot[0] == "P00918" else None  # fixture = 1CIL's UniProt only
-            try:
-                aff = bindingdb.load_target(c.uniprot[0], CACHE, fixture=fx)
-            except Exception as e:
-                print(f"  !! affinity data unavailable for {tid} ({c.uniprot[0]}): {e}")
-                aff = None
+            aff = None
+            if args.skip_affinity:
+                print(f"  (affinity download skipped for {tid})")
+            elif bindingdb_down and not (CACHE / f"bindingdb_{c.uniprot[0]}.json").exists():
+                print(f"  !! affinity data skipped for {tid}: BindingDB judged unavailable earlier in this run")
+            else:
+                try:
+                    aff = bindingdb.load_target(c.uniprot[0], CACHE, fixture=fx)
+                except Exception as e:
+                    print(f"  !! affinity data unavailable for {tid} ({c.uniprot[0]}): {e}")
+                    bindingdb_down = True  # do not spend minutes of retries on every remaining target
+                    aff = None
             h5 = PROCESSED / f"{tid}.h5"
             with h5py.File(h5, "w") as f:
                 f.attrs.update(
@@ -110,11 +119,11 @@ def write_docs(manifest: dict, cands: list, offline: bool) -> None:
         L.append(f"- `{k}` sha256 `{v[:16]}...`")
     L += ["", "## Selected targets", ""]
     for t, v in manifest.get("targets", {}).items():
-        L.append(f"- **{t}**: ligand {v['ligand']} ({v['smiles']}), {v['n_rotors']} rotors, UniProt {v['uniprot']}, {v['n_affinity_ligands']} unique BindingDB ligands")
+        L.append(f"- **{t}**: ligand {v['ligand']} ({v['smiles']}), {v['n_rotors']} rotors, UniProt {v['uniprot']}, {v['n_affinity_ligands']} unique BindingDB ligands" + ("  (BindingDB request failed - re-run `make data`; no affinity model / ligand embedding for this target until then)" if v['n_affinity_ligands'] == 0 else ""))
     if offline:
         L += ["", "## OFFLINE", "", "Network was unreachable; only fixtures in `tests/fixtures/` are present.",
               "Manual download: fetch the PDB files from RCSB into `data_cache/pdb/` and BindingDB JSON into `data_cache/bindingdb_<UNIPROT>.json`, then re-run `scripts/fetch_data.py`."]
-    L += ["", "## Fixtures", "", "`tests/fixtures/` holds a pocket-truncated 1CIL PDB (residues within 12 A of ETS) and a 60-record BindingDB slice for offline tests.", ""]
+    L += ["", "## Fixtures", "", "`tests/fixtures/` holds, for offline tests: prepared pocket-truncated protein + native ligand for 1CIL and 3ERT, a pocket PDB of 1CIL, and a 60-record BindingDB slice for UniProt P00918 (1CIL only).", ""]
     (ROOT / "docs" / "DATA.md").write_text("\n".join(L))
 
 

@@ -43,7 +43,7 @@ def finalize(tracker: Tracker, method: str, target: str, seed: int, n_params: in
     return RunResult(
         method=method, target=target, seed=seed, budget=tracker.budget, best_score=float(tracker.best_score),
         best_rmsd=float(tracker.best_rmsd), success=bool(tracker.best_rmsd < SUCCESS_RMSD), calls_used=n,
-        n_params=n_params, hparams=hparams or {}, curve=curve, rmsd_curve=rc, wall_s=wall_s,
+        n_params=n_params, hparams={**(hparams or {}), "n_nonfinite_oracle_calls": tracker.n_nonfinite}, curve=curve, rmsd_curve=rc, wall_s=wall_s,
     )
 
 

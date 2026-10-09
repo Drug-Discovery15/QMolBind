@@ -55,3 +55,18 @@ def test_protein_frozen_even_with_minimisation(target) -> None:
 
 def test_ligand_parametrization_charges_sum(oracle, target) -> None:
     assert oracle.params.charges.sum() == pytest.approx(0.0, abs=1e-9)
+
+
+def test_nonfinite_energy_is_capped_and_counted(target) -> None:
+    from qumolbind.sim.oracle_fast import NONFINITE_CAP
+
+    o = target.make_oracle()
+    bad = target.ligand.native.copy()
+    bad[0] = np.nan                      # NaN coordinate -> NaN energy
+    e = o.evaluate(bad)
+    assert np.isfinite(e.score) and e.score == NONFINITE_CAP and o.n_nonfinite == 1
+    from qumolbind.rl.budget import Tracker
+
+    t = Tracker(o, 5, target.rmsd)
+    t.evaluate(target.ligand.native)
+    assert t.n_nonfinite == 0

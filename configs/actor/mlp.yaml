@@ -1,0 +1,3 @@
+type: mlp
+hidden: [128, 128]   # ppo_mlp_large; ppo_mlp_matched sizes its single hidden layer to match the VQC parameter count
+lr: 1.0e-2

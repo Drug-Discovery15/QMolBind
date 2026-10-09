@@ -21,7 +21,7 @@ qiskit-ibm-runtime 0.50.0, torch_geometric 2.8.0.post1, transformers 5.19.0, pdb
 Lockfile: `requirements-lock.txt` (pip freeze of `.venv`).
 
 ## D5. Torch build
-- Decision: CPU torch. GPU (RTX 5070 Ti) present but 8-qubit sims and small MLPs run faster on CPU; GPU left optional.
+- Decision: CPU torch. A GPU (RTX 5070 Ti) is present and is used by OpenMM (D12), but the 8-qubit VQC and the MLPs stay on CPU as the brief advises (GPU overhead dominates at this size; not separately benchmarked here).
 
 ## D6. Target selection (programmatic screen; see docs/DATA.md for the full table)
 - 1STP (streptavidin-biotin), the prompt's suggestion, is REJECTED: RCSB resolution 2.6 A > 2.5 A.
@@ -52,7 +52,7 @@ Lockfile: `requirements-lock.txt` (pip freeze of `.venv`).
 - Consequences: absolute energies are NOT comparable to Sage/GAFF2 results; relative pose ranking is what the study needs. Neutral sulfonamide at the 1CIL zinc site gives a positive native E_int (sulfonamide N is deprotonated in reality) - an acknowledged limitation; the native pose still ranks below random-torsion poses.
 
 ## D12. Oracle platform: OpenCL (GPU) by default, CPU fallback
-- Measured (1CIL, 2009-atom pocket + ligand, GBn2 CustomGBForce): CPU platform, 1 thread: ~500 ms/GB evaluation (~2 evals/s); OpenCL on the RTX 5070 Ti: ~0.4 ms mixed / ~6 ms double per GB evaluation (~230-340 evals/s end-to-end in mixed). pip wheels of OpenMM have no fast CPU CustomGBForce path here.
+- Measured (see `results/oracle_benchmark.csv`, produced by `scripts/benchmark_oracle.py`, and the table in REPORT.md / docs/ARCHITECTURE.md): the CPU platform with 1 thread needs ~0.5 s per GBn2 evaluation, OpenCL on the RTX 5070 Ti is two orders of magnitude faster end-to-end. The pip OpenMM build has no fast CPU CustomGBForce path here.
 - Decision: `oracle_platform: auto` -> OpenCL when available else CPU. This deviates from "one OpenMM context per worker, single-threaded CPU" in spirit (each worker still has its own context). The smoke target "<15 min on CPU" therefore assumes a GPU for OpenMM; without one, smoke would take hours (documented in README).
 - Mixed precision differs from double by ~0.02 kJ/mol on solvation terms; tests that need tight tolerances use `precision=double`.
 

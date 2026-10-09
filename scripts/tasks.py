@@ -41,8 +41,8 @@ def t_env() -> None:
     run(PY, "-c", IMPORT_CHECK)
 
 
-def t_data() -> None:
-    script("fetch_data.py")  # offline-safe: falls back to tests/fixtures and documents the manual download in docs/DATA.md
+def t_data(*fetch_args: str) -> None:
+    script("fetch_data.py", *fetch_args)  # offline-safe: falls back to tests/fixtures and documents the manual download in docs/DATA.md
     script("prep_targets.py", check=False)
 
 
@@ -75,7 +75,7 @@ def t_report() -> None:
 def t_smoke() -> None:
     """1 target, B=500, 2 seeds, all methods, 2 AL rounds, report. Needs the OpenCL platform for OpenMM (see DECISIONS D12)."""
     os.environ["EXP"] = "smoke"
-    t_data()
+    t_data("--skip-affinity")  # smoke needs structures only; BindingDB is slow/unreliable and irrelevant here
     if not (ROOT / "data_cache" / "targets" / "1eve" / "protein.pdb").exists():
         print("[smoke] 1eve not prepared (offline?) -> falling back to the committed 3ert fixture target")
         os.environ["QMB_TARGETS"] = "3ert"

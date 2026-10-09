@@ -25,6 +25,7 @@ class Tracker:
         self.best_rmsd = np.nan
         self.curve = np.full(budget, np.nan)       # best score after call i
         self.rmsd_curve = np.full(budget, np.nan)  # RMSD of best-score pose after call i
+        self._nf0 = getattr(oracle, "n_nonfinite", 0)
         self.log_poses = False
         self.pose_log: list[tuple[np.ndarray, np.ndarray]] = []  # (coords, [vdw, elec, solv, strain, score]) when enabled
 
@@ -41,6 +42,11 @@ class Tracker:
         self.rmsd_curve[self.calls] = self.best_rmsd
         self.calls += 1
         return et
+
+    @property
+    def n_nonfinite(self) -> int:
+        """NaN/inf oracle energies replaced by a finite cap during this tracker's lifetime."""
+        return getattr(self._oracle, "n_nonfinite", 0) - self._nf0
 
     @property
     def remaining(self) -> int:
