@@ -92,16 +92,16 @@ Single process, full fast-oracle evaluation per pose (pair terms + GBn2 complex 
 
 | target | n_atoms | platform | precision | threads | device | evals_per_s | n_evals |
 |---|---|---|---|---|---|---|---|
-| 3ert | 2109 | OpenCL | mixed | nan | NVIDIA GeForce RTX 5070 Ti | 241.0 | 100 |
-| 3ert | 2109 | OpenCL | double | nan | NVIDIA GeForce RTX 5070 Ti | 91.1 | 100 |
-| 3ert | 2109 | CPU | nan | 1 | nan | 1.9 | 6 |
-| 3ert | 2109 | CPU | nan | 8 | nan | 9.2 | 6 |
-| 1uyd | 2202 | OpenCL | mixed | nan | NVIDIA GeForce RTX 5070 Ti | 250.1 | 100 |
-| 1uyd | 2202 | OpenCL | double | nan | NVIDIA GeForce RTX 5070 Ti | 88.2 | 100 |
-| 1uyd | 2202 | CPU | nan | 1 | nan | 1.7 | 6 |
-| 1uyd | 2202 | CPU | nan | 8 | nan | 4.7 | 6 |
-| 1eve | 2659 | OpenCL | mixed | nan | NVIDIA GeForce RTX 5070 Ti | 154.3 | 100 |
-| 1eve | 2659 | OpenCL | double | nan | NVIDIA GeForce RTX 5070 Ti | 63.0 | 100 |
-| 1eve | 2659 | CPU | nan | 1 | nan | 1.2 | 6 |
-| 1eve | 2659 | CPU | nan | 8 | nan | 5.9 | 6 |
+| 3ert | 2109 | OpenCL | mixed | nan | NVIDIA GeForce RTX 5070 Ti | 240.1 | 100 |
+| 3ert | 2109 | OpenCL | double | nan | NVIDIA GeForce RTX 5070 Ti | 91.0 | 100 |
+| 3ert | 2109 | CPU | nan | 1 | nan | 1.7 | 8 |
+| 3ert | 2109 | CPU | nan | 8 | nan | 6.3 | 8 |
+| 1uyd | 2202 | OpenCL | mixed | nan | NVIDIA GeForce RTX 5070 Ti | 237.5 | 100 |
+| 1uyd | 2202 | OpenCL | double | nan | NVIDIA GeForce RTX 5070 Ti | 88.3 | 100 |
+| 1uyd | 2202 | CPU | nan | 1 | nan | 1.6 | 8 |
+| 1uyd | 2202 | CPU | nan | 8 | nan | 7.0 | 8 |
+| 1eve | 2659 | OpenCL | mixed | nan | NVIDIA GeForce RTX 5070 Ti | 133.2 | 100 |
+| 1eve | 2659 | OpenCL | double | nan | NVIDIA GeForce RTX 5070 Ti | 61.7 | 100 |
+| 1eve | 2659 | CPU | nan | 1 | nan | 1.1 | 8 |
+| 1eve | 2659 | CPU | nan | 8 | nan | 4.0 | 8 |
 <!-- BENCH:END -->
