@@ -1,0 +1,5 @@
+name: smoke
+budget: 500          # B, total oracle calls
+seeds: [0, 1]
+targets: [1stp]
+al_rounds: 2

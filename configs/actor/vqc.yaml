@@ -1,0 +1,11 @@
+type: vqc
+n_qubits: 8
+n_layers: 4
+rotations: ry            # ry | ryrz
+entangler: cnot          # cnot | cz | none
+encoding: amplitude      # amplitude | angle
+init_std: 0.1
+trainable_scale: false
+input_projection: false  # variant (ii): trainable classical projection d -> 2^n
+lr: 1.0e-2               # sweep {3e-3, 1e-2, 3e-2}
+backend: torch           # torch | pennylane

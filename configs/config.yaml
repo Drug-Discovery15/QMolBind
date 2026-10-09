@@ -1,0 +1,10 @@
+defaults:
+  - env: default
+  - actor: vqc
+  - ppo: default
+  - experiment: smoke
+  - _self_
+
+seed: 0
+results_dir: results
+allow_hardware: false   # real quantum hardware is OFF unless --allow-hardware AND IBM_QUANTUM_TOKEN

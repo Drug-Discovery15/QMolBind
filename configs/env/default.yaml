@@ -1,0 +1,9 @@
+max_torsions: 8          # K <= 8
+max_delta_deg: 60.0
+episode_len: 20          # T
+state_dim: 256           # d
+use_ligand_emb: false
+use_pocket_emb: false
+reward_clip: 10.0
+reward_scale: 50.0       # kJ/mol per reward unit (re-checked in Stage 3)
+fast_minimize_steps: 0   # capped ligand-only minimization iterations (0 = off)

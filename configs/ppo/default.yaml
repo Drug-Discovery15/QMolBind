@@ -1,0 +1,11 @@
+gamma: 0.99
+gae_lambda: 0.95
+clip: 0.2
+ent_coef: 0.0
+vf_coef: 0.5
+epochs: 4
+minibatches: 4
+n_envs: 4
+rollout_steps: 20
+critic_lr: 1.0e-3
+max_grad_norm: 0.5

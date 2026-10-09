@@ -1,0 +1,15 @@
+name: qumolbind
+channels: [conda-forge]
+dependencies:
+  - python=3.11
+  - rdkit
+  - openmm
+  - openmmforcefields
+  - openff-toolkit
+  - pdbfixer
+  - ambertools        # only needed for GAFF2 / AM1-BCC (not available on win-64)
+  - mdanalysis
+  - biopython
+  - pip
+  - pip:
+      - -e .[dev,hardware]

@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "qumolbind"
+version = "0.1.0"
+description = "Hybrid quantum-classical RL for protein-ligand torsion search"
+requires-python = ">=3.11"
+dependencies = [
+  "numpy", "scipy", "pandas", "h5py", "torch", "torch_geometric", "pennylane", "pennylane-lightning",
+  "rdkit", "openmm", "openmmforcefields", "pdbfixer", "mdanalysis", "biopython", "gymnasium",
+  "lightgbm", "cma", "transformers", "hydra-core", "omegaconf", "tensorboard", "matplotlib",
+  "qiskit>=2", "qiskit-aer", "pyyaml", "requests",
+]
+
+[project.optional-dependencies]
+dev = ["pytest"]
+hardware = ["qiskit-ibm-runtime"]
+
+[tool.setuptools.packages.find]
+include = ["qumolbind*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
