@@ -100,6 +100,7 @@ class PPO:
             last_v = self.critic(torch.as_tensor(self._obs, dtype=torch.float32))
         buf.compute_gae(last_v, cfg.gamma, cfg.gae_lambda)
         data = buf.flat()
+        self.last_batch_obs = data["obs"]
         n = data["obs"].shape[0]
         mb = max(n // cfg.minibatches, 1)
         stats = {"pg_loss": 0.0, "v_loss": 0.0, "entropy": 0.0, "approx_kl": 0.0, "clipfrac": 0.0, "actor_grad_norm": 0.0}
@@ -159,9 +160,9 @@ class PPO:
             if hasattr(self.env, "oracle_calls"):
                 row["oracle_calls"] = self.env.oracle_calls
                 row["clip_rate"] = self.env.clip_rate()
+            if self.on_update is not None:  # may add diagnostics to ``row`` (e.g. entanglement entropy)
+                self.on_update(self, row)
             self.history.append(row)
             if self.logger is not None:
                 self.logger.log(self.updates, **{k: v for k, v in row.items() if k != "update"})
-            if self.on_update is not None:
-                self.on_update(self, row)
         return self.history

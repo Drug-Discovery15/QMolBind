@@ -78,3 +78,31 @@ def matched_mlp_hidden(obs_dim: int, n_actions: int, target_params: int, n_hidde
         if gap < best_gap:
             best, best_gap = hidden, gap
     return best
+
+
+class VQCActor(GaussianActor):
+    """Quantum mean network: <Z_i> of a variational circuit on the amplitude-encoded state; classical log_std.
+
+    mean = <Z_i> (x optional trainable scale) in [-1, 1] normalised action units; the env multiplies by max_delta_deg.
+    """
+
+    def __init__(self, obs_dim: int, n_actions: int, n_qubits: int = 8, n_layers: int = 4, rotations: str = "ry",
+                 entangler: str = "cnot", encoding: str = "amplitude", init_std: float = 0.1, trainable_scale: bool = False,
+                 input_projection: bool = False, init_log_std: float = -0.7, shots: int | None = None) -> None:
+        super().__init__(n_actions, init_log_std)
+        from qumolbind.quantum.torch_vqc import TorchVQC
+
+        if n_actions > n_qubits:
+            raise ValueError(f"K={n_actions} torsions need >= {n_actions} qubits for the Z readout (got n={n_qubits})")
+        self.vqc = TorchVQC(n_qubits, n_layers, n_actions, rotations, entangler, encoding, init_std, trainable_scale,
+                            input_projection, obs_dim)
+        self.shots = shots
+
+    def mean_net(self, obs: torch.Tensor) -> torch.Tensor:
+        return self.vqc(obs.to(torch.float64), shots=self.shots).to(torch.float32)
+
+    def n_quantum_params(self) -> int:
+        return self.vqc.n_quantum_params()
+
+    def n_classical_mean_params(self) -> int:
+        return self.vqc.n_classical_params()

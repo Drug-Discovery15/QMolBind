@@ -27,13 +27,23 @@ BASELINES = ["random_search", "hill_climb", "cmaes", "ppo_mlp_matched", "ppo_mlp
 
 def registry() -> dict:
     reg = dict(REGISTRY)
-    try:  # VQC policy is registered once the quantum stack exists
-        from qumolbind.quantum.runner import run_ppo_vqc
+    from qumolbind.quantum.runner import VARIANTS, make_variant_runner
 
-        reg["ppo_vqc"] = run_ppo_vqc
-    except ImportError:
-        pass
+    for name in VARIANTS:
+        reg[name] = make_variant_runner(name)
+        TUNING_GRID.setdefault(name, TUNING_GRID["ppo_vqc"])
+    reg["ppo_mlp_matched_proj"] = lambda problem, budget, seed, actor_cfg=None, **kw: _matched_proj(problem, budget, seed, actor_cfg, **kw)
+    TUNING_GRID.setdefault("ppo_mlp_matched_proj", TUNING_GRID["ppo_mlp_matched"])
     return reg
+
+
+def _matched_proj(problem, budget, seed, actor_cfg=None, **kw):
+    """MLP matched in size to VQC variant (ii) (trainable 256->256 projection)."""
+    from qumolbind.baselines.ppo_mlp import run_ppo_mlp_matched
+
+    res = run_ppo_mlp_matched(problem, budget, seed, actor_cfg={**(actor_cfg or {}), "input_projection": True}, **kw)
+    res.method = "ppo_mlp_matched_proj"
+    return res
 
 
 def default_hparams(method: str) -> dict:
