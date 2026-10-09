@@ -39,7 +39,11 @@ VQC = ["ppo_vqc", "ppo_vqc_aff", "ppo_vqc_reup"]
 SEARCH = ["random_search", "hill_climb", "cmaes"]
 BASELINES = [*SEARCH, "ppo_zero_mean", "ppo_mlp_matched", "ppo_mlp_large", "ppo_mlp_matched_reup"]
 EXP_SEEDS, EXP_TARGETS = [500, 501], ["3ert", "1uyd"]
-CONF_SEEDS, CONF_TARGETS = list(range(600, 610)), ["3ert", "1uyd", "1eve"]
+import os  # noqa: E402
+_a, _b = (os.environ.get("QMB_V4_SEEDS", "600:610")).split(":")
+CONF_SEEDS, CONF_TARGETS = list(range(int(_a), int(_b))), ["3ert", "1uyd", "1eve"]
+CONF_DIR = os.environ.get("QMB_V4_DIR", "confirm4")  # V5 = replication of the V4 protocol on fresh seeds: QMB_V4_DIR=confirm5 QMB_V4_SEEDS=700:730
+REPORT_NAME = os.environ.get("QMB_V4_REPORT", "REPORT_V4.md")
 B = 2000
 MARGIN = 100.0   # kJ/mol non-inferiority margin (pre-registered)
 SETTING = SETTINGS["A"]
@@ -108,7 +112,7 @@ def confirm() -> None:
     tuning = json.loads((ROOT / "results" / "tuning_pilot.json").read_text())
     d = to_dict(load_config(["experiment=pilot"]))
     actor_cfg = {k: v for k, v in d["actor"].items() if k != "lr"}
-    base = ROOT / "results" / "confirm4"
+    base = ROOT / "results" / CONF_DIR
     for sub in ("rows", "ckpt", "curves"):
         (base / sub).mkdir(parents=True, exist_ok=True)
     preg = registry()
@@ -157,7 +161,7 @@ def confirm() -> None:
                         z = z * v.r_scale.detach().numpy() + v.r_bias.detach().numpy()
                 e7_rows.append({"target": tid, "seed": s, "chi": chi, "mae_mean_abs_diff": float(np.abs(z - exact).mean())})
     e7 = pd.DataFrame(e7_rows)
-    e7.to_csv(ROOT / "results" / "confirm4_E7.csv", index=False)
+    e7.to_csv(ROOT / "results" / f"{CONF_DIR}_E7.csv", index=False)
     verdict = M.criterion(df, e7 if len(e7) else None, baselines=BASELINES, vqc=subject)
 
     # parity (non-inferiority) verdict + diagnostic vs ppo_zero_mean
@@ -198,12 +202,12 @@ def confirm() -> None:
         g["median best energy [95% CI]"] = [f"{a:.4g} [{b:.4g}, {c:.4g}]" for a, b, c in zip(g.median_best_energy, g.energy_ci_lo, g.energy_ci_hi)]
         g["success rate [95% CI]"] = [f"{a:.2f} [{b:.2f}, {c:.2f}]" for a, b, c in zip(g.success_rate, g.success_ci_lo, g.success_ci_hi)]
         L += [f"### `{tid}`", "", md_table(g[["method", "n_seeds", "n_params", "median best energy [95% CI]", "success rate [95% CI]"]]), ""]
-        curves = {m: M.load_curves("confirm4", tid, m) for m in methods if (df[df.target == tid].method == m).any()}
+        curves = {m: M.load_curves(CONF_DIR, tid, m) for m in methods if (df[df.target == tid].method == m).any()}
         fig = ROOT / "results" / "figures" / f"V4_curves_{tid}.png"
         plots.plot_curves(curves, f"V4 confirmation {tid}", fig)
         L += [f"![V4 {tid}](results/figures/{fig.name})", ""]
-    (ROOT / "REPORT_V4.md").write_text("\n".join(L) + "\n", encoding="utf-8")
-    (ROOT / "results" / "verdict_v4.json").write_text(json.dumps({**verdict, "parity": parity, "parity_rows": par_rows}, indent=2, default=str))
+    (ROOT / REPORT_NAME).write_text("\n".join(L) + "\n", encoding="utf-8")
+    (ROOT / "results" / f"verdict_{CONF_DIR}.json").write_text(json.dumps({**verdict, "parity": parity, "parity_rows": par_rows}, indent=2, default=str))
     print(f"V4 VERDICT -> advantage: {verdict['branch']}; parity: {parity}")
 
 
