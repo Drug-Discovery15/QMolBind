@@ -33,6 +33,7 @@ class PoseEnv(gym.Env):
         reward_scale: float = 1.0,
         energy_scale: float = 100.0,
         energy_transform: str = "symlog",
+        elite_start_prob: float = 0.0,
         lig_emb: np.ndarray | None = None,
         pocket_emb: np.ndarray | None = None,
     ) -> None:
@@ -42,6 +43,7 @@ class PoseEnv(gym.Env):
         self.max_delta, self.T, self.d = max_delta_deg, episode_len, state_dim
         self.reward_clip, self.reward_scale, self.energy_scale = reward_clip, reward_scale, energy_scale
         self.energy_transform = energy_transform
+        self.elite_start_prob = elite_start_prob  # prob. an episode starts from the oracle's elite archive instead of random torsions
         self.lig_emb, self.pocket_emb = lig_emb, pocket_emb
         self.action_space = spaces.Box(-1.0, 1.0, (self.K,), dtype=np.float32)
         self.observation_space = spaces.Box(-np.inf, np.inf, (self.d,), dtype=np.float32)
@@ -90,7 +92,11 @@ class PoseEnv(gym.Env):
 
     def reset(self, *, seed: int | None = None, options: dict | None = None):
         super().reset(seed=seed)
-        self.coords = self.lm.randomize(self.np_random)
+        arch = getattr(self.oracle, "archive", None)
+        if self.elite_start_prob > 0 and arch is not None and len(arch) >= 3 and self.np_random.random() < self.elite_start_prob:
+            self.coords = arch[int(self.np_random.integers(len(arch)))][1].copy()  # restart from one of the best poses found so far
+        else:
+            self.coords = self.lm.randomize(self.np_random)
         self.t = 0
         self._calls0 = self.n_oracle
         self.best_score = np.inf
@@ -134,5 +140,5 @@ def make_env(
     oracle = oracle or target.make_oracle(**okw)
     if wrap_oracle is not None:
         oracle = wrap_oracle(oracle)
-    allowed = {"max_delta_deg", "episode_len", "state_dim", "reward_clip", "reward_scale", "energy_scale", "energy_transform"}
+    allowed = {"max_delta_deg", "episode_len", "state_dim", "reward_clip", "reward_scale", "energy_scale", "energy_transform", "elite_start_prob"}
     return PoseEnv(target, oracle, **{k: v for k, v in cfg.items() if k in allowed})

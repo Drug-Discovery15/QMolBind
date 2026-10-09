@@ -92,3 +92,23 @@ def test_rollout_helper_depends_on_policy_and_keeps_episode_end_stats() -> None:
     assert not np.allclose(f0, f1)                # different policies -> different final energies
     assert np.allclose(f0, e0)                    # zero action never moves the pose
     assert np.all(b0 <= e0 + 1e-9)
+
+
+def test_elite_restart_starts_from_archive_and_defaults_off() -> None:
+    from qumolbind.baselines.common import make_problem
+    from qumolbind.baselines.ppo_mlp import build_vec_env
+
+    prob = make_problem("1cil", {"episode_len": 3})
+    tr = prob.tracker(400)
+    rng = np.random.default_rng(0)
+    for _ in range(30):
+        tr.evaluate(prob.target.ligand.randomize(rng))
+    assert 3 <= len(tr.archive) <= tr.elite_k and tr.archive[0][0] == tr.best_score
+    assert [a[0] for a in tr.archive] == sorted(a[0] for a in tr.archive)
+    from qumolbind.env.pose_env import make_env
+
+    env = make_env("1cil", {"episode_len": 3, "elite_start_prob": 1.0}, target=prob.target, oracle=prob.oracle, wrap_oracle=lambda o: tr)
+    env.reset(seed=1)
+    assert any(np.allclose(env.coords, c) for _, c in tr.archive)        # started from an elite pose
+    env0 = make_env("1cil", {"episode_len": 3}, target=prob.target, oracle=prob.oracle, wrap_oracle=lambda o: tr)
+    assert env0.elite_start_prob == 0.0

@@ -27,6 +27,8 @@ class Tracker:
         self.rmsd_curve = np.full(budget, np.nan)  # RMSD of best-score pose after call i
         self._nf0 = getattr(oracle, "n_nonfinite", 0)
         self.log_poses = False
+        self.elite_k = 20
+        self.archive: list[tuple[float, np.ndarray]] = []  # best poses seen so far, sorted by score (used by elite-restart episodes)
         self.pose_log: list[tuple[np.ndarray, np.ndarray]] = []  # (coords, [vdw, elec, solv, strain, score]) when enabled
 
     def evaluate(self, coords: np.ndarray):
@@ -36,6 +38,10 @@ class Tracker:
         if et.score < self.best_score:
             self.best_score, self.best_coords = et.score, np.array(coords, copy=True)
             self.best_rmsd = self.rmsd_fn(coords)
+        if len(self.archive) < self.elite_k or et.score < self.archive[-1][0]:
+            self.archive.append((float(et.score), np.array(coords, copy=True)))
+            self.archive.sort(key=lambda t: t[0])
+            del self.archive[self.elite_k :]
         if self.log_poses:
             self.pose_log.append((np.array(coords, copy=True), np.array([et.vdw, et.elec, et.solv, et.strain, et.score])))
         self.curve[self.calls] = self.best_score
