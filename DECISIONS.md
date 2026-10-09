@@ -45,3 +45,19 @@ Lockfile: `requirements-lock.txt` (pip freeze of `.venv`).
 
 ## D10. RMSD symmetry
 - Automorphisms are computed on the topology-only heavy-atom graph (bond orders/charges/aromaticity ignored) so carboxylate, sulfonyl and nitro oxygens are interchangeable. RDKit's CalcRMS uses typed matching and would count a carboxylate O swap as an error; tests compare against CalcRMS on a molecule where the two coincide. RMSD is in-place (no superposition), evaluation only.
+
+## D11. Ligand force field (replaces openff-2.1.0 / GAFF2, which need openff-toolkit / AmberTools, absent from PyPI)
+- Decision: generated in `sim/params.py`: MMFF94 partial charges (Gasteiger fallback, logged), UFF Lennard-Jones (polar H eps=0), harmonic bonds/angles frozen at the native geometry (pose-independent, cancel in E_int), AMBER-style 1-4 scaling (0.8333/0.5). Protein: amber14 (ff14SB). Solvent: GBn2 via OpenMM's `implicit/gbn2.xml`.
+- Alternatives: project-local micromamba env with openff-toolkit (AmberTools is not available for win-64 anyway; AM1-BCC impossible); Gasteiger-only.
+- Consequences: absolute energies are NOT comparable to Sage/GAFF2 results; relative pose ranking is what the study needs. Neutral sulfonamide at the 1CIL zinc site gives a positive native E_int (sulfonamide N is deprotonated in reality) - an acknowledged limitation; the native pose still ranks below random-torsion poses.
+
+## D12. Oracle platform: OpenCL (GPU) by default, CPU fallback
+- Measured (1CIL, 2009-atom pocket + ligand, GBn2 CustomGBForce): CPU platform, 1 thread: ~500 ms/GB evaluation (~2 evals/s); OpenCL on the RTX 5070 Ti: ~0.4 ms mixed / ~6 ms double per GB evaluation (~230-340 evals/s end-to-end in mixed). pip wheels of OpenMM have no fast CPU CustomGBForce path here.
+- Decision: `oracle_platform: auto` -> OpenCL when available else CPU. This deviates from "one OpenMM context per worker, single-threaded CPU" in spirit (each worker still has its own context). The smoke target "<15 min on CPU" therefore assumes a GPU for OpenMM; without one, smoke would take hours (documented in README).
+- Mixed precision differs from double by ~0.02 kJ/mol on solvation terms; tests that need tight tolerances use `precision=double`.
+
+## D13. Objective = E_int + MMFF strain; reward uses a signed-log transform
+- E_int = E_complex - E_protein - E_ligand cancels all ligand-internal terms, so it cannot penalise intramolecular clashes in torsion space. Score = E_int + (MMFF94 intramolecular energy of the pose - that of the native pose); `include_strain` can disable it.
+- Clash energies reach 1e9 kJ/mol; reward = -(e_t - e_{t-1}) with e = symlog(score/100 kJ/mol) (monotone, so optima are unchanged), clipped to +-10; the clip rate is logged. `energy_transform: linear` gives the prompt's literal -(dE)/scale.
+- State: fixed layout with K_max=8 torsion slots (sin 8, cos 8) so the layout is target independent (needed for transfer E8).
+- Reset evaluates the oracle once (counted in the budget).

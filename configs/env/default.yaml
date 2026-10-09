@@ -1,9 +1,14 @@
-max_torsions: 8          # K <= 8
+max_torsions: 8          # K_max slots in the state; per-target K = min(rotatable bonds, 8)
 max_delta_deg: 60.0
 episode_len: 20          # T
 state_dim: 256           # d
 use_ligand_emb: false
 use_pocket_emb: false
+energy_transform: symlog # symlog | linear
+energy_scale: 100.0      # kJ/mol; symlog(E/scale)
+reward_scale: 1.0        # reward = -(e_t - e_{t-1}) / reward_scale
 reward_clip: 10.0
-reward_scale: 50.0       # kJ/mol per reward unit (re-checked in Stage 3)
-fast_minimize_steps: 0   # capped ligand-only minimization iterations (0 = off)
+include_strain: true
+oracle_platform: auto    # auto (OpenCL if present) | OpenCL | CPU
+oracle_precision: mixed  # mixed | double (OpenCL)
+fast_minimize_steps: 0   # capped ligand-only minimisation iterations (0 = off)
