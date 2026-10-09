@@ -42,4 +42,4 @@ Committed to git before E1 was executed; `scripts/make_report.py` evaluates it m
 
 * Pairwise comparisons additionally report Mann-Whitney U (two-sided) with the rank-biserial correlation as effect size.
 * Curves are median +- IQR across seeds; the best seed is never reported alone.
-* The phrase "quantum advantage" is not used anywhere in the repository unless this criterion's positive branch is met.
+* No claim of superiority over classical methods is made anywhere in the repository unless this criterion's positive branch is met.
