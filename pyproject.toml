@@ -10,7 +10,7 @@ requires-python = ">=3.11"
 dependencies = [
   "numpy", "scipy", "pandas", "h5py", "torch", "torch_geometric", "pennylane", "pennylane-lightning",
   "rdkit", "openmm", "openmmforcefields", "pdbfixer", "mdanalysis", "biopython", "gymnasium",
-  "lightgbm", "cma", "transformers", "hydra-core", "omegaconf", "tensorboard", "matplotlib",
+  "lightgbm", "scikit-learn", "cma", "transformers", "hydra-core", "omegaconf", "tensorboard", "matplotlib",
   "qiskit>=2", "qiskit-aer", "pyyaml", "requests",
 ]
 
